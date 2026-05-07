@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from typing import List, Optional
+from typing import Any, List, Optional, cast
 
 from .. import db
 from ..schemas import LectureTopicsAdd, LectureCreate, StudyTopic, StudyTopicCreate, StudyTopicPatch
@@ -30,8 +30,7 @@ async def create_study_topic(payload: StudyTopicCreate) -> StudyTopic:
     cols = validated_cols(StudyTopicCreate, data)
     placeholders = ", ".join(["%s"] * len(cols))
     row = await db.fetchrow(
-        f"INSERT INTO study_topics ({', '.join(cols)}) "
-        f"VALUES ({placeholders}) RETURNING *",
+        f"INSERT INTO study_topics ({', '.join(cols)}) VALUES ({placeholders}) RETURNING *",
         *[data[c] for c in cols],
     )
     if row is None:
@@ -51,7 +50,8 @@ async def update_study_topic(topic_id: str, patch: StudyTopicPatch) -> StudyTopi
     set_clause = ", ".join(f"{c} = %s" for c in cols)
     row = await db.fetchrow(
         f"UPDATE study_topics SET {set_clause} WHERE id = %s RETURNING *",
-        *[data[c] for c in cols], topic_id,
+        *[data[c] for c in cols],
+        topic_id,
     )
     if row is None:
         raise ValueError(f"study topic {topic_id} not found")
@@ -103,11 +103,14 @@ async def add_lecture_topics(payload: LectureTopicsAdd) -> List[StudyTopic]:
             lec_cols = validated_cols(LectureCreate, lec_data)
             lec_placeholders = ", ".join(["%s"] * len(lec_cols))
             await cur.execute(
-                f"INSERT INTO lectures ({', '.join(lec_cols)}) "
-                f"VALUES ({lec_placeholders}) RETURNING id",
+                cast(
+                    Any,
+                    f"INSERT INTO lectures ({', '.join(lec_cols)}) "
+                    f"VALUES ({lec_placeholders}) RETURNING id",
+                ),
                 [lec_data[c] for c in lec_cols],
             )
-            lec_row = await cur.fetchone()
+            lec_row = cast(dict[str, Any] | None, await cur.fetchone())
             if lec_row is None:
                 raise ValueError("failed to create lecture")
             lecture_id = lec_row["id"]
@@ -123,15 +126,17 @@ async def add_lecture_topics(payload: LectureTopicsAdd) -> List[StudyTopic]:
             cols = validated_cols(StudyTopicCreate, row)
             placeholders = ", ".join(["%s"] * len(cols))
             await cur.execute(
-                f"INSERT INTO study_topics ({', '.join(cols)}) "
-                f"VALUES ({placeholders}) RETURNING *",
+                cast(
+                    Any,
+                    f"INSERT INTO study_topics ({', '.join(cols)}) "
+                    f"VALUES ({placeholders}) RETURNING *",
+                ),
                 [row[c] for c in cols],
             )
-            inserted_row = await cur.fetchone()
+            inserted_row = cast(dict[str, Any] | None, await cur.fetchone())
             if inserted_row is None:
                 raise ValueError(
-                    f"failed to insert study topic '{row.get('name')}' for "
-                    f"{payload.course_code}"
+                    f"failed to insert study topic '{row.get('name')}' for {payload.course_code}"
                 )
             inserted.append(StudyTopic.model_validate(inserted_row))
     return inserted
