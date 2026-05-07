@@ -14,10 +14,6 @@ services:
     image: postgres:16-alpine
     container_name: openstudy-postgres
     restart: unless-stopped
-    env_file:
-      - path: .env.docker
-        format: raw
-        required: true
     environment:
       POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
     volumes:
@@ -39,16 +35,6 @@ services:
     image: openstudy:latest
     container_name: openstudy
     restart: unless-stopped
-    env_file:
-      # format: raw disables ${VAR} interpolation inside values — required so
-      # APP_PASSWORD_HASH ("$argon2id$v=19$m=...") isn't mangled by compose
-      # treating $argon2id, $v, $m as undefined variables.
-      - path: .env
-        format: raw
-        required: true
-      - path: .env.docker
-        format: raw
-        required: true
     environment:
       # Tell the storage layer where the canonical course tree lives.
       STUDY_ROOT: "/opt/courses"
