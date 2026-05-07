@@ -14,9 +14,9 @@ to `/opt/courses`). All routes are session-auth-gated.
   GET    /api/files/lecture-materials  files grouped by `NN_lecture` prefix
   GET    /api/files/search             full-text search via the file_index
 """
+
 from __future__ import annotations
 
-import mimetypes
 import os
 import unicodedata
 from typing import Any, Optional
@@ -31,10 +31,17 @@ from ..services import file_index as file_index_svc
 from ..services import storage as storage_svc
 
 
-_UMLAUT_MAP = str.maketrans({
-    "ä": "ae", "ö": "oe", "ü": "ue", "ß": "ss",
-    "Ä": "Ae", "Ö": "Oe", "Ü": "Ue",
-})
+_UMLAUT_MAP = str.maketrans(
+    {
+        "ä": "ae",
+        "ö": "oe",
+        "ü": "ue",
+        "ß": "ss",
+        "Ä": "Ae",
+        "Ö": "Oe",
+        "Ü": "Ue",
+    }
+)
 
 
 def _sanitize_path(p: str) -> str:
@@ -53,7 +60,9 @@ router = APIRouter(prefix="/files", tags=["files"], dependencies=[Depends(requir
 
 
 @router.get("/list")
-async def list_files(prefix: str = Query(default=""), limit: int = Query(default=500, le=1000)) -> list[dict[str, Any]]:
+async def list_files(
+    prefix: str = Query(default=""), limit: int = Query(default=500, le=1000)
+) -> list[dict[str, Any]]:
     """List entries at the given prefix. Not recursive — drill down by passing
     a folder's path as the next prefix. Returns a sorted list of
     {name, path, type, size?, content_type?, updated_at?}."""
@@ -85,7 +94,9 @@ async def list_files(prefix: str = Query(default=""), limit: int = Query(default
 
 
 @router.get("/signed-url")
-async def signed_url(path: str = Query(...), expires_in: int = Query(default=3600, ge=60, le=86400)) -> dict[str, Any]:
+async def signed_url(
+    path: str = Query(...), expires_in: int = Query(default=3600, ge=60, le=86400)
+) -> dict[str, Any]:
     """Mint a signed URL for the given object path. Default 1-hour expiry so
     the browser can cache the PDF response for reasonable repeat views."""
     if not path or ".." in path:
@@ -241,6 +252,7 @@ async def lecture_materials(course_code: str = Query(...)) -> dict[str, list[dic
         raise HTTPException(500, f"course tree list failed: {exc}") from exc
 
     import re
+
     pat = re.compile(r"^(\d{1,3})_lecture")
     grouped: dict[str, list[dict[str, Any]]] = {}
     for key in keys:
@@ -250,15 +262,19 @@ async def lecture_materials(course_code: str = Query(...)) -> dict[str, list[dic
             continue
         m = pat.match(rel)
         bucket_key = str(int(m.group(1))) if m else ""
-        grouped.setdefault(bucket_key, []).append({
-            "name": rel,
-            "path": key,
-        })
+        grouped.setdefault(bucket_key, []).append(
+            {
+                "name": rel,
+                "path": key,
+            }
+        )
     return grouped
 
 
 @router.get("/search")
-async def search(q: str = Query(..., min_length=2), limit: int = Query(20, le=100)) -> list[dict[str, Any]]:
+async def search(
+    q: str = Query(..., min_length=2), limit: int = Query(20, le=100)
+) -> list[dict[str, Any]]:
     """Full-text search across indexed course-tree files.
 
     Returns ranked matches with snippets. Match terms are wrapped in
@@ -281,6 +297,7 @@ async def raw_file(path: str = Query(...)):
         raise HTTPException(404, f"not found: {path}")
     # Resolve via the storage layer so the same traversal guard applies
     from pathlib import Path
+
     root = Path(os.environ.get("STUDY_ROOT", "/opt/courses"))
     target = (root / path.lstrip("/")).resolve()
     if not str(target).startswith(str(root.resolve())):
