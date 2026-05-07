@@ -1,0 +1,9 @@
+[submodule "curriculum/sources/coding-interview-university"]
+	path = curriculum/sources/coding-interview-university
+	url = https://github.com/jwasham/coding-interview-university
+[submodule "curriculum/sources/system-design-primer"]
+	path = curriculum/sources/system-design-primer
+	url = https://github.com/donnemartin/system-design-primer
+[submodule "curriculum/sources/interactive-coding-challenges"]
+	path = curriculum/sources/interactive-coding-challenges
+	url = https://github.com/donnemartin/interactive-coding-challenges
