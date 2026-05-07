@@ -15,6 +15,9 @@ services:
     container_name: openstudy-postgres
     restart: unless-stopped
     environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
     volumes:
       - /opt/postgres-data:/var/lib/postgresql/data
@@ -38,6 +41,13 @@ services:
     environment:
       # Tell the storage layer where the canonical course tree lives.
       STUDY_ROOT: "/opt/courses"
+      APP_PASSWORD_HASH: ${APP_PASSWORD_HASH}
+      SESSION_SECRET: ${SESSION_SECRET}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      TZ: ${TZ:-Africa/Nairobi}
+      PYTHONUNBUFFERED: ${PYTHONUNBUFFERED:-1}
     depends_on:
       postgres:
         condition: service_healthy
@@ -45,9 +55,6 @@ services:
       # Bind mount, not volume — files live on the host, container reads/writes
       # them in place. Same path inside and outside for sanity.
       - /opt/courses:/opt/courses:rw
-    ports:
-      # Bind to localhost only; Caddy on the host reverse-proxies in.
-      - "127.0.0.1:8000:8000"
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8000/api/health"]
       interval: 10s
@@ -69,8 +76,8 @@ services:
         # openstudy container on the internal network, so the SPA always
         # talks to the API as same-origin.
         #
-        # PUBLIC_SITE_URL / PUBLIC_SITE_NAME come from your .env.docker
-        # (or shell env). They land in <link rel=canonical>, OpenGraph
+        # PUBLIC_SITE_URL / PUBLIC_SITE_NAME come from Coolify-injected env
+        # (or local shell env). They land in <link rel=canonical>, OpenGraph
         # tags, JSON-LD, robots.txt, sitemap.xml and the manifest. Set
         # them to YOUR domain and name; the localhost default keeps the
         # build deterministic for first-run dev but is not what you want
@@ -89,10 +96,6 @@ services:
     depends_on:
       openstudy:
         condition: service_started
-    ports:
-      # Bind to localhost only; the host's reverse proxy (Caddy etc.)
-      # terminates TLS and forwards here.
-      - "127.0.0.1:8080:80"
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost/"]
       interval: 15s

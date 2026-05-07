@@ -74,18 +74,34 @@ PGHOST
 PGPORT
 ```
 
-In Docker Compose, `.env.docker` provides the Postgres credentials and the app
-container reaches Postgres on the internal Docker network.
+In the Coolify-ready Compose file, database and application values are injected
+through environment variable substitution. Configure them in Coolify, export
+them in the shell before local Compose runs, or provide them through whatever
+secret manager your deployment platform uses. The app container reaches
+Postgres on the internal Docker network.
 
-For frontend/domain metadata, `.env.docker` may also include:
+Required runtime values:
+
+```text
+POSTGRES_USER=openstudy
+POSTGRES_PASSWORD=<strong-password>
+POSTGRES_DB=openstudy
+APP_PASSWORD_HASH=<argon2id-password-hash>
+SESSION_SECRET=<random-session-secret>
+```
+
+Optional runtime/build values:
 
 ```text
 PUBLIC_SITE_URL=https://learn.alexmbugua.me
 PUBLIC_SITE_NAME=OpenStudy
 PUBLIC_SHOW_LANDING=false
+PUBLIC_GOOGLE_SITE_VERIFICATION=
+TZ=Africa/Nairobi
+PYTHONUNBUFFERED=1
 ```
 
-These are used by the frontend build, not the curriculum seed.
+`PUBLIC_*` values are used by the frontend build, not the curriculum seed.
 
 ## Local Production-Like Test
 
@@ -137,7 +153,7 @@ Also back up any file storage under `/opt/courses` if you have learner files.
 
 - Do not expose Postgres publicly.
 - Run seeding from the app container or a trusted server shell.
-- Do not commit `.env` or `.env.docker`.
+- Do not commit real secrets or generated local env files.
 - Treat curriculum source repositories as read-only inputs.
 - Review generated manifest diffs before applying production seeds.
 
@@ -148,4 +164,3 @@ Also back up any file storage under `/opt/courses` if you have learner files.
 - Forgetting `--dry-run` before production seed.
 - Assuming asset files are copied into OpenStudy storage.
 - Rolling back the container and assuming database seed changes rolled back too.
-

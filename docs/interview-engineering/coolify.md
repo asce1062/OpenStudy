@@ -17,23 +17,34 @@ Compose behavior. Adjust names to match your project and server.
 
 ## Environment Variables
 
-Configure the equivalent of `.env` for the `openstudy` service:
+The Compose file is configured for Coolify-injected environment variables. Add
+these values in Coolify's environment manager rather than relying on
+repository-local `env_file` entries.
+
+Required application values:
 
 ```text
 APP_PASSWORD_HASH=...
 SESSION_SECRET=...
-PUBLIC_URL=https://learn.alexmbugua.me
 ```
 
-Configure the equivalent of `.env.docker` for Compose/Postgres:
+Required database values:
 
 ```text
 POSTGRES_USER=openstudy
 POSTGRES_PASSWORD=<strong-password>
 POSTGRES_DB=openstudy
+```
+
+Recommended domain/build values:
+
+```text
 PUBLIC_SITE_URL=https://learn.alexmbugua.me
 PUBLIC_SITE_NAME=OpenStudy
 PUBLIC_SHOW_LANDING=false
+PUBLIC_GOOGLE_SITE_VERIFICATION=
+TZ=Africa/Nairobi
+PYTHONUNBUFFERED=1
 ```
 
 Keep secrets in Coolify's environment manager, not in Git.
@@ -118,8 +129,8 @@ Run it in the `openstudy` container, not the frontend container.
 ### Seed Helper Reports Missing DB Env
 
 The shell does not have `POSTGRES_USER`, `POSTGRES_PASSWORD`, or `POSTGRES_DB`.
-Use the backend container shell where Compose injects those variables, or
-configure them in the Coolify shell environment.
+Use the backend container shell where Coolify/Compose injects those variables,
+or configure them in the Coolify shell environment.
 
 ### Manifest Generation Fails
 
@@ -138,4 +149,3 @@ manifest after fixing the source checkout.
 - Updating a source submodule locally but not pushing the submodule pointer.
 - Applying the seed without checking dry-run counts.
 - Assuming Coolify rollback reverses database seed changes.
-
