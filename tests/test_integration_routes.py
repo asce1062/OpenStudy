@@ -33,8 +33,11 @@ async def test_dashboard_aggregates_every_service(db_conn, monkeypatch):
 
     import app.db as db_module
     from app.auth import require_auth
+    from app.config import get_settings
     from app.main import create_app
 
+    monkeypatch.setenv("SESSION_SECRET", "test-session-secret")
+    get_settings.cache_clear()
     monkeypatch.setattr(db_module, "_pool", db_conn)
     app = create_app()
     # Bypass the cookie-signed auth — Depends(require_auth) is short-circuited
@@ -52,6 +55,66 @@ async def test_dashboard_aggregates_every_service(db_conn, monkeypatch):
     ):
         assert isinstance(body.get(key), list), (key, body.get(key))
     assert "now" in body and isinstance(body["now"], str)
+
+
+@pytest.mark.asyncio
+async def test_files_api_serves_synced_packaged_assets(db_conn, tmp_path, monkeypatch):
+    from httpx import ASGITransport, AsyncClient
+
+    import app.db as db_module
+    from app.auth import require_auth
+    from app.config import get_settings
+    from app.main import create_app
+    from app.services import packaged_assets as packaged_assets_svc
+
+    manifest_path = tmp_path / "manifest.yaml"
+    sources_root = tmp_path / "curriculum" / "sources"
+    source_dir = sources_root / "interactive-coding-challenges" / "anki_cards"
+    study_root = tmp_path / "courses"
+    source_dir.mkdir(parents=True)
+    (source_dir / "Coding.apkg").write_bytes(b"anki deck")
+    manifest_path.write_text(
+        """
+sources:
+  - id: interactive-coding-challenges
+    path: curriculum/sources/interactive-coding-challenges
+assets:
+  - id: icc-anki-coding
+    format: apkg
+    source:
+      repo: interactive-coding-challenges
+      path: anki_cards/Coding.apkg
+""".lstrip(),
+        encoding="utf-8",
+    )
+
+    monkeypatch.setenv("STUDY_ROOT", str(study_root))
+    monkeypatch.setenv("SESSION_SECRET", "test-session-secret")
+    get_settings.cache_clear()
+    packaged_assets_svc.sync_packaged_curriculum_assets(
+        manifest_path=manifest_path,
+        sources_root=sources_root,
+        study_root=study_root,
+    )
+
+    monkeypatch.setattr(db_module, "_pool", db_conn)
+    app = create_app()
+    app.dependency_overrides[require_auth] = lambda: True
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        listing = await ac.get(
+            "/api/files/list",
+            params={"prefix": "interview-engineering/resources/flashcards"},
+        )
+        download = await ac.get(
+            "/api/files/raw",
+            params={"path": "interview-engineering/resources/flashcards/Coding.apkg"},
+        )
+
+    assert listing.status_code == 200, listing.text
+    assert listing.json()[0]["path"] == "interview-engineering/resources/flashcards/Coding.apkg"
+    assert download.status_code == 200, download.text
+    assert download.content == b"anki deck"
 
 
 @pytest.mark.asyncio

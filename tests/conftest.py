@@ -155,7 +155,10 @@ async def client(db_conn, monkeypatch):
     from httpx import ASGITransport, AsyncClient
 
     import app.db as db_module
+    from app.config import get_settings
 
+    monkeypatch.setenv("SESSION_SECRET", "test-session-secret")
+    get_settings.cache_clear()
     monkeypatch.setattr(db_module, "_pool", db_conn)
 
     from app.main import create_app
@@ -164,3 +167,4 @@ async def client(db_conn, monkeypatch):
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
+    get_settings.cache_clear()

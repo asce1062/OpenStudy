@@ -50,6 +50,54 @@ async def test_list_course_files_after_upload(client, db_conn, mcp_server, study
     assert entry["type"] == "file"
 
 
+@pytest.mark.asyncio
+async def test_list_course_files_includes_synced_packaged_assets(
+    client, db_conn, mcp_server, study_root, tmp_path
+):
+    from app.services import packaged_assets as packaged_assets_svc
+
+    packaged_root = tmp_path / ".packaged"
+    manifest_path = packaged_root / "manifest.yaml"
+    sources_root = packaged_root / "curriculum" / "sources"
+    source_dir = sources_root / "system-design-primer" / "resources" / "flash_cards"
+    source_dir.mkdir(parents=True)
+    (source_dir / "System Design.apkg").write_bytes(b"system design deck")
+    manifest_path.write_text(
+        """
+sources:
+  - id: system-design-primer
+    path: curriculum/sources/system-design-primer
+assets:
+  - id: sdp-flashcards-system-design
+    format: apkg
+    source:
+      repo: system-design-primer
+      path: resources/flash_cards/System Design.apkg
+""".lstrip(),
+        encoding="utf-8",
+    )
+    packaged_assets_svc.sync_packaged_curriculum_assets(
+        manifest_path=manifest_path,
+        sources_root=sources_root,
+        study_root=study_root,
+    )
+
+    list_course_files = get_tool_fn(mcp_server, "list_course_files")
+
+    root = await list_course_files(prefix="")
+    assert [entry["path"] for entry in root] == ["interview-engineering"]
+
+    course = await list_course_files(prefix="interview-engineering")
+    assert [entry["path"] for entry in course] == ["interview-engineering/resources"]
+
+    flashcards = await list_course_files(
+        prefix="interview-engineering/resources/flashcards"
+    )
+    assert [entry["path"] for entry in flashcards] == [
+        "interview-engineering/resources/flashcards/System Design.apkg"
+    ]
+
+
 # ── read_course_file ─────────────────────────────────────────────────────────
 
 
