@@ -106,8 +106,12 @@ services:
       timeout: 5s
       retries: 4
       start_period: 10s
-    networks: [internal]
+    networks:
+      - internal
+      - coolify
 
 networks:
   internal:
     driver: bridge
+  coolify:
+    external: true
