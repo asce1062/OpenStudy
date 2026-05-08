@@ -361,6 +361,24 @@ class DashboardSummary(BaseModel):
     fall_behind: List[FallBehindItem]
 
 
+# ---------- Agenda ----------
+class AgendaItem(BaseModel):
+    id: str
+    kind: str
+    title: str
+    course_code: Optional[str] = None
+    reason: str
+    estimated_minutes: int
+    priority: int
+    source_ref: dict[str, Any]
+
+
+class DailyAgenda(BaseModel):
+    date: date
+    course_code: Optional[str] = None
+    items: List[AgendaItem]
+
+
 # ---------- Auth ----------
 class LoginRequest(BaseModel):
     password: str
