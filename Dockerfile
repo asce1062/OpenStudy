@@ -6,7 +6,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
     UV_LINK_MODE=copy \
-    UV_COMPILE_BYTECODE=1
+    UV_COMPILE_BYTECODE=1 \
+    OPENSTUDY_PACKAGED_CURRICULUM=1
 
 # System deps: curl for HEALTHCHECK, build tools for any source wheels.
 # Slim them after the install layer to keep image small.
@@ -30,6 +31,7 @@ COPY scripts ./scripts
 COPY migrations ./migrations
 COPY curriculum/interview_manifest.v2.yaml ./curriculum/interview_manifest.v2.yaml
 COPY curriculum/manifests ./curriculum/manifests
+COPY curriculum/sources ./curriculum/sources
 
 # Final install (in case pyproject changed locally).
 RUN uv sync --frozen --no-dev
