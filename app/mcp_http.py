@@ -50,8 +50,8 @@ class PostgrestTokenVerifier(TokenVerifier):
 
 def _public_origin() -> str:
     s = get_settings()
-    if s.public_url:
-        return s.public_url.rstrip("/")
+    if s.public_origin:
+        return s.public_origin
     return "http://localhost:8000"
 
 

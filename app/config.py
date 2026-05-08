@@ -25,7 +25,9 @@ class Settings(BaseSettings):
     expose_docs: bool = False
 
     # Public origin (scheme+host, no trailing slash) — required for OAuth/MCP URLs.
-    # In prod, set to your public origin (e.g. https://openstudy.dev).
+    # In prod, set PUBLIC_BASE_URL to your public origin (e.g. https://openstudy.dev).
+    public_base_url: str = ""
+    # Backward-compatible legacy name. Prefer PUBLIC_BASE_URL for new deploys.
     public_url: str = ""
 
     # CORS — comma-separated
@@ -38,6 +40,10 @@ class Settings(BaseSettings):
     @property
     def cors_origins_list(self) -> List[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+
+    @property
+    def public_origin(self) -> str:
+        return (self.public_base_url or self.public_url).strip().rstrip("/")
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

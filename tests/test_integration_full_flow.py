@@ -33,6 +33,7 @@ async def https_client(db_conn, monkeypatch):
     so Secure cookies survive the round-trip, plus a known
     APP_PASSWORD_HASH so /api/auth/login can succeed."""
     monkeypatch.setenv("APP_PASSWORD_HASH", _TEST_PASSWORD_HASH)
+    monkeypatch.setenv("SESSION_SECRET", "test-session-secret")
     get_settings.cache_clear()
     monkeypatch.setattr(db_module, "_pool", db_conn)
 
@@ -142,6 +143,72 @@ async def test_oauth_full_lifecycle(https_client, db_conn):
         json={"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}},
     )
     assert mcp_resp_2.status_code == 401, mcp_resp_2.text
+
+
+@pytest.mark.asyncio
+async def test_oauth_metadata_uses_public_base_url(https_client, monkeypatch):
+    public_base_url = "https://learn.alexmbugua.me"
+    monkeypatch.setenv("PUBLIC_BASE_URL", public_base_url)
+    get_settings.cache_clear()
+
+    protected = await https_client.get("/.well-known/oauth-protected-resource/mcp")
+    assert protected.status_code == 200, protected.text
+    assert protected.json()["resource"] == f"{public_base_url}/mcp"
+    assert protected.json()["authorization_servers"] == [public_base_url]
+
+    auth_server = await https_client.get("/.well-known/oauth-authorization-server")
+    assert auth_server.status_code == 200, auth_server.text
+    metadata = auth_server.json()
+    assert metadata["issuer"] == public_base_url
+    assert metadata["authorization_endpoint"] == f"{public_base_url}/oauth/authorize"
+    assert metadata["token_endpoint"] == f"{public_base_url}/oauth/token"
+    assert metadata["registration_endpoint"] == f"{public_base_url}/oauth/register"
+    assert metadata["revocation_endpoint"] == f"{public_base_url}/oauth/revoke"
+
+    unauthorized = await https_client.post(
+        "/mcp/",
+        headers={
+            "Authorization": "Bearer invalid",
+            "Accept": "application/json, text/event-stream",
+            "Content-Type": "application/json",
+        },
+        json={"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}},
+    )
+    assert unauthorized.status_code == 401
+    www_authenticate = unauthorized.headers["www-authenticate"]
+    assert (
+        f'resource_metadata="{public_base_url}/.well-known/oauth-protected-resource/mcp"'
+        in www_authenticate
+    )
+    assert "localhost" not in www_authenticate
+
+
+@pytest.mark.asyncio
+async def test_oauth_metadata_local_default_without_public_base_url(
+    https_client, monkeypatch
+):
+    monkeypatch.delenv("PUBLIC_BASE_URL", raising=False)
+    monkeypatch.delenv("PUBLIC_URL", raising=False)
+    get_settings.cache_clear()
+
+    protected = await https_client.get("/.well-known/oauth-protected-resource/mcp")
+    assert protected.status_code == 200, protected.text
+    assert protected.json()["resource"] == "https://test/mcp"
+
+    unauthorized = await https_client.post(
+        "/mcp/",
+        headers={
+            "Authorization": "Bearer invalid",
+            "Accept": "application/json, text/event-stream",
+            "Content-Type": "application/json",
+        },
+        json={"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}},
+    )
+    assert unauthorized.status_code == 401
+    assert (
+        'resource_metadata="http://localhost:8000/.well-known/oauth-protected-resource/mcp"'
+        in unauthorized.headers["www-authenticate"]
+    )
 
 
 @pytest.mark.asyncio

@@ -43,6 +43,7 @@ POSTGRES_DB=openstudy
 Recommended domain/build values:
 
 ```text
+PUBLIC_BASE_URL=https://learn.alexmbugua.me
 PUBLIC_SITE_URL=https://learn.alexmbugua.me
 PUBLIC_SITE_NAME=OpenStudy
 PUBLIC_SHOW_LANDING=false
@@ -50,6 +51,10 @@ PUBLIC_GOOGLE_SITE_VERIFICATION=
 TZ=Africa/Nairobi
 PYTHONUNBUFFERED=1
 ```
+
+`PUBLIC_BASE_URL` is the backend public origin used in OAuth/MCP discovery
+metadata and `WWW-Authenticate` headers. It must be the external HTTPS origin,
+not `localhost`.
 
 Keep secrets in Coolify's environment manager, not in Git.
 

@@ -91,6 +91,7 @@ POSTGRES_PASSWORD=<strong-password>
 POSTGRES_DB=openstudy
 APP_PASSWORD_HASH=<argon2id-password-hash>
 SESSION_SECRET=<random-session-secret>
+PUBLIC_BASE_URL=https://learn.alexmbugua.me
 ```
 
 Optional runtime/build values:
@@ -104,7 +105,9 @@ TZ=Africa/Nairobi
 PYTHONUNBUFFERED=1
 ```
 
-`PUBLIC_*` values are used by the frontend build, not the curriculum seed.
+`PUBLIC_BASE_URL` is used by the backend for OAuth/MCP discovery URLs and
+`WWW-Authenticate` metadata. The `PUBLIC_SITE_*` values are used by the
+frontend build, not the curriculum seed.
 
 ## Local Production-Like Test
 
