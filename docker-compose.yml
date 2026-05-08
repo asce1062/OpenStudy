@@ -1,7 +1,7 @@
 # OpenStudy stack: postgres + fastapi + frontend.
 # All three containers live on an internal docker network. Only `frontend`
-# (which serves the SPA and reverse-proxies API traffic to fastapi) and
-# `openstudy` (kept exposed for direct curl debugging) are bound to the host.
+# (which serves the SPA and reverse-proxies API traffic to fastapi) is bound
+# to the host.
 # A user's outer reverse proxy (Caddy / nginx / Traefik / whatever)
 # terminates TLS and forwards to 127.0.0.1:8080 (the frontend container).
 #

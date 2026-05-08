@@ -127,6 +127,11 @@ class ValidationResult:
         return [issue for issue in self.issues if issue.severity == "warning"]
 
 
+@dataclass(frozen=True)
+class ValidationOptions:
+    allow_missing_source_files: bool = False
+
+
 def issue(severity: Severity, category: str, path: str, message: str) -> ValidationIssue:
     return ValidationIssue(severity=severity, category=category, path=path, message=message)
 
@@ -386,7 +391,12 @@ def find_cycle(graph: dict[str, list[str]]) -> list[str] | None:
     return None
 
 
-def validate_manifest(data: dict[str, Any], manifest_path: Path) -> ValidationResult:
+def validate_manifest(
+    data: dict[str, Any],
+    manifest_path: Path,
+    options: ValidationOptions | None = None,
+) -> ValidationResult:
+    options = options or ValidationOptions()
     issues: list[ValidationIssue] = []
     stats = ValidationStats()
     known_ids: dict[str, str] = {}
@@ -399,6 +409,15 @@ def validate_manifest(data: dict[str, Any], manifest_path: Path) -> ValidationRe
     for key in REQUIRED_TOP_LEVEL_KEYS:
         if key not in data:
             issues.append(issue("error", "yaml", key, "missing required top-level key"))
+    if options.allow_missing_source_files:
+        issues.append(
+            issue(
+                "warning",
+                "sources",
+                "$.sources",
+                "source file existence checks skipped because --allow-missing-source-files was set",
+            )
+        )
     warn_extra_keys(issues, data, TOP_LEVEL_KEYS, "$", "schema-hygiene")
 
     meta = require_mapping(issues, data.get("meta"), "meta", "meta")
@@ -451,11 +470,15 @@ def validate_manifest(data: dict[str, Any], manifest_path: Path) -> ValidationRe
             if isinstance(path_value, str):
                 resolved = REPO_ROOT / path_value
                 if not resolved.exists():
-                    issues.append(
-                        issue(
-                            "error", "sources", f"{source_path}.path", "source path does not exist"
+                    if not options.allow_missing_source_files:
+                        issues.append(
+                            issue(
+                                "error",
+                                "sources",
+                                f"{source_path}.path",
+                                "source path does not exist",
+                            )
                         )
-                    )
                 elif not resolved.is_dir():
                     issues.append(
                         issue(
@@ -475,7 +498,7 @@ def validate_manifest(data: dict[str, Any], manifest_path: Path) -> ValidationRe
                 )
 
     if "assets" in data:
-        validate_assets(issues, data.get("assets"), source_ids, source_roots)
+        validate_assets(issues, data.get("assets"), source_ids, source_roots, options)
 
     tracks = require_list(issues, data.get("tracks"), "tracks", "tracks", non_empty=True)
     if tracks is not None:
@@ -521,6 +544,7 @@ def validate_manifest(data: dict[str, Any], manifest_path: Path) -> ValidationRe
                     source_ids,
                     source_roots,
                     manifest_path,
+                    options,
                 )
                 expected_order += 1
 
@@ -615,6 +639,7 @@ def validate_assets(
     raw_assets: Any,
     source_ids: dict[str, str],
     source_roots: dict[str, Path],
+    options: ValidationOptions,
 ) -> None:
     assets = require_list(issues, raw_assets, "assets", "assets")
     if assets is None:
@@ -706,14 +731,15 @@ def validate_assets(
                         )
                     )
                 if not resolved.exists():
-                    issues.append(
-                        issue(
-                            "error",
-                            "assets",
-                            f"{asset_path}.source.path",
-                            "asset source path does not exist",
+                    if not options.allow_missing_source_files:
+                        issues.append(
+                            issue(
+                                "error",
+                                "assets",
+                                f"{asset_path}.source.path",
+                                "asset source path does not exist",
+                            )
                         )
-                    )
 
         usage = require_mapping(issues, asset.get("usage"), f"{asset_path}.usage", "assets")
         if usage is not None:
@@ -751,6 +777,7 @@ def validate_module(
     source_ids: dict[str, str],
     source_roots: dict[str, Path],
     manifest_path: Path,
+    options: ValidationOptions,
 ) -> None:
     add_missing_key_errors(issues, module, MODULE_KEYS, module_path, "modules")
     warn_extra_keys(issues, module, MODULE_KEYS, module_path, "schema-hygiene")
@@ -822,6 +849,7 @@ def validate_module(
             source_ids,
             source_roots,
             manifest_path,
+            options,
         )
         lesson_minutes += minutes
         title = lesson.get("title")
@@ -867,6 +895,7 @@ def validate_lesson(
     source_ids: dict[str, str],
     source_roots: dict[str, Path],
     manifest_path: Path,
+    options: ValidationOptions,
 ) -> int:
     add_missing_key_errors(issues, lesson, LESSON_REQUIRED_KEYS, lesson_path, "lessons")
     warn_extra_keys(issues, lesson, LESSON_KEYS, lesson_path, "schema-hygiene")
@@ -974,6 +1003,7 @@ def validate_lesson(
         source_roots,
         manifest_path,
         category if isinstance(category, str) else None,
+        options,
     )
     return minutes_value
 
@@ -986,6 +1016,7 @@ def validate_source_reference(
     source_roots: dict[str, Path],
     manifest_path: Path,
     type_category: str | None,
+    options: ValidationOptions,
 ) -> None:
     source = require_mapping(
         issues, lesson.get("source"), f"{lesson_path}.source", "source-references"
@@ -1007,11 +1038,15 @@ def validate_source_reference(
                     "inferred lessons should normally be project or checkpoint entries",
                 )
             )
-        if repo not in {None, "manifest"} and not (
-            isinstance(repo, str)
-            and repo in source_ids
-            and isinstance(source_path, str)
-            and (source_roots[repo] / source_path).exists()
+        if (
+            not options.allow_missing_source_files
+            and repo not in {None, "manifest"}
+            and not (
+                isinstance(repo, str)
+                and repo in source_ids
+                and isinstance(source_path, str)
+                and (source_roots[repo] / source_path).exists()
+            )
         ):
             issues.append(
                 issue(
@@ -1067,14 +1102,15 @@ def validate_source_reference(
             )
         )
     if not resolved.exists():
-        issues.append(
-            issue(
-                "error",
-                "source-references",
-                f"{lesson_path}.source.path",
-                "source path does not exist",
+        if not options.allow_missing_source_files:
+            issues.append(
+                issue(
+                    "error",
+                    "source-references",
+                    f"{lesson_path}.source.path",
+                    "source path does not exist",
+                )
             )
-        )
         return
     heading = source.get("heading")
     if heading is not None:
@@ -1207,6 +1243,15 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         default=str(DEFAULT_MANIFEST),
         help=f"Manifest path to validate (default: {DEFAULT_MANIFEST})",
     )
+    parser.add_argument(
+        "--allow-missing-source-files",
+        action="store_true",
+        help=(
+            "Downgrade missing curriculum source files/assets to warnings. "
+            "Use this for lean production images that include the generated manifest "
+            "but intentionally exclude curriculum/sources."
+        ),
+    )
     return parser.parse_args(argv)
 
 
@@ -1218,7 +1263,11 @@ def main(argv: list[str] | None = None) -> int:
     data, load_exit = load_manifest(manifest_path)
     if data is None:
         return load_exit
-    result = validate_manifest(data, manifest_path)
+    result = validate_manifest(
+        data,
+        manifest_path,
+        ValidationOptions(allow_missing_source_files=args.allow_missing_source_files),
+    )
     print_summary(manifest_path, result)
     return 1 if result.errors else 0
 

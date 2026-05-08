@@ -18,6 +18,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY --from=ghcr.io/astral-sh/uv:0.8.0 /uv /usr/local/bin/uv
 
 WORKDIR /app
+ENV PATH="/app/.venv/bin:$PATH"
 
 # Install dependencies first for better layer caching.
 COPY pyproject.toml uv.lock ./
@@ -27,6 +28,8 @@ RUN uv sync --frozen --no-install-project --no-dev
 COPY app ./app
 COPY scripts ./scripts
 COPY migrations ./migrations
+COPY curriculum/interview_manifest.v2.yaml ./curriculum/interview_manifest.v2.yaml
+COPY curriculum/manifests ./curriculum/manifests
 
 # Final install (in case pyproject changed locally).
 RUN uv sync --frozen --no-dev

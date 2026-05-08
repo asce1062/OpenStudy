@@ -24,7 +24,11 @@ web/.vite/
 .idea/
 docs/
 
-# Env files never go into images — env comes from compose env_file.
+# Curriculum source repos are large and not needed for production seeding.
+# The image copies only the prebuilt manifest and curated base manifest.
+curriculum/sources/
+
+# Env files never go into images — env comes from Compose/Coolify injection.
 .env
 .env.*
 !.env.example
