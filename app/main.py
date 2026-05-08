@@ -26,6 +26,7 @@ from .routers import (
     study_topics as study_topics_router,
     tasks as tasks_router,
 )
+from .services import packaged_assets as packaged_assets_svc
 
 
 # Single source of truth for the running app's version: pyproject.toml.
@@ -59,6 +60,7 @@ async def _lifespan(app: FastAPI):
     so calling it under those conditions is harmless either way.
     """
     await db_module.init_pool()
+    await packaged_assets_svc.sync_packaged_curriculum_assets_on_startup()
     try:
         yield
     finally:

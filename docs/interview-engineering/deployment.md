@@ -172,5 +172,8 @@ Also back up any file storage under `/opt/courses` if you have learner files.
 - Forgetting `--dry-run` before production seed.
 - Running production seeding without `--skip-generate`.
 - Defining custom Compose networks in Coolify and causing proxy 504s.
-- Assuming packaged flashcard assets are copied into OpenStudy storage.
+- Assuming packaging flashcard assets into `/app/curriculum/sources` is enough.
+  They must also be synced into `/opt/courses/interview-engineering/resources/flashcards`
+  before the Files pane and MCP file tools can see them; backend startup handles
+  this when `OPENSTUDY_PACKAGED_CURRICULUM=1`.
 - Rolling back the container and assuming database seed changes rolled back too.

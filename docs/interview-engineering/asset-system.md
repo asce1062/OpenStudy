@@ -3,8 +3,8 @@
 The asset system discovers flashcard files from curriculum source repositories
 and records metadata in the generated manifest. OpenStudy does not parse or
 import the flashcard content, but the production Docker image packages the
-small set of referenced `.apkg` and `.db` files so seed-time asset checks pass
-without shipping full source repositories.
+small set of referenced `.apkg` and `.db` files and syncs them into the
+OpenStudy course-file root so learners can download them from the Files pane.
 
 ## Asset Types
 
@@ -61,11 +61,22 @@ attribution and lets future automation find the original asset.
 
 ### `storage_path`
 
-Represents the logical destination path if OpenStudy later gains curriculum
-asset storage or export support. It is not currently copied by the seed script.
-In the production image, the original asset files remain under
-`/app/curriculum/sources/...`; `storage_path` is still metadata, not a copied
-file destination.
+Represents the logical curriculum asset path in the manifest. At runtime,
+OpenStudy does not use this value as the browser path. The startup sync copies
+packaged flashcard files into:
+
+```text
+STUDY_ROOT/interview-engineering/resources/flashcards/
+```
+
+With the default deployment this resolves to:
+
+```text
+/opt/courses/interview-engineering/resources/flashcards/
+```
+
+That location is what the dashboard Files pane and MCP `list_course_files`
+tool browse.
 
 ### `usage`
 
@@ -80,8 +91,8 @@ Describes how a learner should use the asset:
 
 For `.apkg` decks:
 
-1. Locate the file under `curriculum/sources` locally or
-   `/app/curriculum/sources` inside the deployed image.
+1. Download the file from the dashboard Files pane under
+   `interview-engineering/resources/flashcards/`.
 2. Import it into Anki.
 3. Keep OpenStudy tasks and module progress as the planning layer.
 4. Use Anki for spaced repetition reviews.
@@ -118,10 +129,31 @@ The seed script warns if an asset source file is missing. Production images
 should include the six whitelisted flashcard assets, while still excluding full
 source repositories.
 
+## Runtime Visibility
+
+Packaging files into the image is not enough for the dashboard. The Files pane,
+download endpoint, and MCP file tools all read from `STUDY_ROOT`, not directly
+from `/app/curriculum/sources`.
+
+On backend startup, `app.services.packaged_assets` runs when
+`OPENSTUDY_PACKAGED_CURRICULUM=1` and copies supported manifest assets from:
+
+```text
+PACKAGED_CURRICULUM_ASSETS_ROOT=/app/curriculum/sources
+```
+
+to:
+
+```text
+/opt/courses/interview-engineering/resources/flashcards/
+```
+
+The sync is idempotent. It copies only manifest assets with `format: apkg` or
+`format: db`, and it does not expose the full source repositories.
+
 ## Future Improvements
 
 - Add a first-class `curriculum_assets` table.
-- Copy asset files into a configured OpenStudy storage location.
 - Add dashboard UI for asset review status.
 - Add optional Anki import instructions per asset.
 - Add checksums for binary asset tracking.

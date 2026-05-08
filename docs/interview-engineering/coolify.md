@@ -119,6 +119,16 @@ Production images include the generated manifest and the whitelisted flashcard
 asset files. They do not include full source submodules, so production seeding
 should use `--skip-generate`.
 
+The backend startup also syncs packaged flashcard assets into the course-file
+root:
+
+```text
+/opt/courses/interview-engineering/resources/flashcards/
+```
+
+This extra step is required because the Files pane and MCP `list_course_files`
+tool browse `/opt/courses`, not `/app/curriculum/sources`.
+
 ## Public Routing
 
 The working Coolify setup keeps the domain attached only to the `frontend`
@@ -201,6 +211,24 @@ Regenerate the manifest during development or CI, then redeploy the image.
 Check that the packaged image contains the whitelisted flashcard files under
 `/app/curriculum/sources`. Full source repositories are still intentionally
 excluded.
+
+### Files Pane Does Not Show Flashcards
+
+Packaging assets into `/app/curriculum/sources` only makes them available to
+the container. The dashboard can list and download them only after startup sync
+copies them into `/opt/courses/interview-engineering/resources/flashcards/`.
+
+Check the backend container:
+
+```bash
+ls /app/curriculum/sources
+ls /opt/courses/interview-engineering/resources/flashcards
+```
+
+If the first path has files but the second is empty, confirm
+`OPENSTUDY_PACKAGED_CURRICULUM=1` and
+`PACKAGED_CURRICULUM_ASSETS_ROOT=/app/curriculum/sources` are present in the
+backend environment, then redeploy or restart the backend container.
 
 ## Common Mistakes
 
