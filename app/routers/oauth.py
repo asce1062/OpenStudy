@@ -28,8 +28,8 @@ router = APIRouter(tags=["oauth"])
 
 def _origin(request: Request) -> str:
     s = get_settings()
-    if s.public_url:
-        return s.public_url.rstrip("/")
+    if s.public_origin:
+        return s.public_origin
     proto = request.headers.get("x-forwarded-proto") or request.url.scheme
     host = request.headers.get("x-forwarded-host") or request.url.netloc
     return f"{proto}://{host}"

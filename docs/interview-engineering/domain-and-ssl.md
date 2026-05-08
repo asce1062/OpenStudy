@@ -99,14 +99,17 @@ OpenGraph tags, robots, sitemap, and manifest metadata.
 
 ## Backend Public URL
 
-If OAuth or MCP clients need an externally visible URL, set the backend public
-URL according to the app's existing environment conventions:
+OAuth and MCP clients need externally visible discovery URLs. Set the backend
+public origin to the same HTTPS domain users access:
 
 ```text
-PUBLIC_URL=https://learn.alexmbugua.me
+PUBLIC_BASE_URL=https://learn.alexmbugua.me
 ```
 
-Keep this consistent with the domain users and Claude clients will access.
+This value is used for OAuth issuer and endpoint metadata, protected resource
+metadata, MCP resource identifiers, and `WWW-Authenticate` headers. Do not leave
+it as `localhost` in production. `PUBLIC_URL` is still accepted as a legacy
+fallback, but new deployments should use `PUBLIC_BASE_URL`.
 
 ## Health Checks
 
