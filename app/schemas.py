@@ -379,6 +379,37 @@ class DailyAgenda(BaseModel):
     items: List[AgendaItem]
 
 
+class AgendaActionRequest(BaseModel):
+    source_ref: Optional[dict[str, Any]] = None
+    reason: Optional[str] = None
+    confidence: Optional[int] = Field(default=None, ge=0, le=5)
+    duration_minutes: Optional[int] = Field(default=None, ge=0)
+    notes: Optional[str] = None
+    error_count: Optional[int] = Field(default=None, ge=0)
+    completed_count: Optional[int] = Field(default=None, ge=0)
+    total_count: Optional[int] = Field(default=None, ge=0)
+    snooze_until: Optional[datetime] = None
+    snooze_minutes: Optional[int] = Field(default=None, ge=1)
+
+
+AgendaOutcome = Literal["completed", "partial", "failed", "skipped", "snoozed"]
+
+
+class AgendaResultRequest(AgendaActionRequest):
+    outcome: AgendaOutcome
+
+
+class AgendaActionResponse(BaseModel):
+    agenda_item_id: str
+    outcome: AgendaOutcome
+    source_ref: dict[str, Any]
+    mutations_applied: List[str]
+    event_id: Optional[str] = None
+    message: str
+    refresh_recommended: bool = True
+    agenda: Optional[DailyAgenda] = None
+
+
 # ---------- Auth ----------
 class LoginRequest(BaseModel):
     password: str
