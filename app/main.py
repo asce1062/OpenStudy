@@ -11,6 +11,7 @@ from . import db as db_module
 from .config import get_settings
 from .mcp_http import build_mcp_http_app
 from .routers import (
+    agenda as agenda_router,
     auth as auth_router,
     courses as courses_router,
     dashboard as dashboard_router,
@@ -134,6 +135,7 @@ def create_app() -> FastAPI:
         tasks_router.router,
         events_router.router,
         lectures_router.router,
+        agenda_router.router,
         files_router.router,
         settings_router.router,
         internal_router.router,

@@ -47,6 +47,7 @@ from .services import (
     lectures as lectures_svc,
     settings as settings_svc,
     storage as storage_svc,
+    agenda as agenda_svc,
 )
 
 
@@ -116,6 +117,27 @@ def register_tools(server: FastMCP) -> None:
         `list_study_topics(course_code=..., status='not_started')`."""
         summary = await dashboard_svc.get_dashboard_summary()
         return _jsonable(summary.fall_behind)
+
+    @server.tool()
+    async def generate_daily_agenda(
+        date: Optional[str] = None,
+        course_code: Optional[str] = None,
+    ) -> dict:
+        """Generate today's deterministic execution agenda.
+
+        Returns 4-6 explainable items when enough data exists, prioritising
+        overdue work, struggling topics, fall-behind reviews, new concepts,
+        timed practice, and visible flashcard assets. `date` is optional
+        ISO format (YYYY-MM-DD); `course_code` narrows the agenda."""
+        target_date = None
+        if date:
+            target_date = datetime.strptime(date, "%Y-%m-%d").date()
+        return _jsonable(
+            await agenda_svc.generate_daily_agenda(
+                target_date=target_date,
+                course_code=course_code,
+            )
+        )
 
     # ─────────────────────── Courses ─────────────────────────
 
