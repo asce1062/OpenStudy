@@ -132,7 +132,9 @@ text metadata fields. This keeps the integration small and reversible.
 
 Flashcard decks and databases are discovered and represented in the manifest,
 but not parsed. The learner imports `.apkg` files into Anki manually, and the
-dashboard can display or track the metadata later.
+dashboard can display or track the metadata later. Production images package
+only the referenced flashcard files under `/app/curriculum/sources`; full
+source repositories stay out of the runtime image.
 
 ## Operational Boundary
 
@@ -145,6 +147,10 @@ The curriculum scripts do not:
 - create external services
 - assume Coolify specifically
 
+The Coolify deployment does have one important networking constraint: the
+Compose file should not define custom networks. Let Coolify manage the default
+deployment network and route Traefik to the `frontend` service on exposed
+internal port `80`.
+
 Deployment remains the responsibility of `deploy.sh`, Docker Compose, or the
 hosting platform. Curriculum seeding is a post-deploy operation.
-

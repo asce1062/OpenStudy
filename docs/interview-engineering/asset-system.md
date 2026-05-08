@@ -1,8 +1,10 @@
 # Asset System
 
 The asset system discovers flashcard files from curriculum source repositories
-and records metadata in the generated manifest. It does not parse, import, or
-copy flashcard content.
+and records metadata in the generated manifest. OpenStudy does not parse or
+import the flashcard content, but the production Docker image packages the
+small set of referenced `.apkg` and `.db` files so seed-time asset checks pass
+without shipping full source repositories.
 
 ## Asset Types
 
@@ -61,6 +63,9 @@ attribution and lets future automation find the original asset.
 
 Represents the logical destination path if OpenStudy later gains curriculum
 asset storage or export support. It is not currently copied by the seed script.
+In the production image, the original asset files remain under
+`/app/curriculum/sources/...`; `storage_path` is still metadata, not a copied
+file destination.
 
 ### `usage`
 
@@ -75,7 +80,8 @@ Describes how a learner should use the asset:
 
 For `.apkg` decks:
 
-1. Locate the file under `curriculum/sources`.
+1. Locate the file under `curriculum/sources` locally or
+   `/app/curriculum/sources` inside the deployed image.
 2. Import it into Anki.
 3. Keep OpenStudy tasks and module progress as the planning layer.
 4. Use Anki for spaced repetition reviews.
@@ -108,7 +114,9 @@ The validator checks:
 - source path existence when possible
 - basic usage metadata
 
-The seed script warns if an asset source file is missing.
+The seed script warns if an asset source file is missing. Production images
+should include the six whitelisted flashcard assets, while still excluding full
+source repositories.
 
 ## Future Improvements
 
@@ -117,4 +125,3 @@ The seed script warns if an asset source file is missing.
 - Add dashboard UI for asset review status.
 - Add optional Anki import instructions per asset.
 - Add checksums for binary asset tracking.
-

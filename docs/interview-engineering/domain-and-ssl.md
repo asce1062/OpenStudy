@@ -8,15 +8,15 @@ your own hostname.
 ```mermaid
 flowchart LR
     Browser["Browser / Claude client"] --> DNS["learn.alexmbugua.me"]
-    DNS --> Proxy["TLS reverse proxy"]
-    Proxy --> Frontend["frontend container :8080"]
+    DNS --> Proxy["Coolify / Traefik TLS proxy"]
+    Proxy --> Frontend["frontend container :80"]
     Frontend --> Backend["openstudy container :8000"]
     Backend --> Postgres["postgres container"]
 ```
 
 The public domain should point at the frontend/reverse proxy entrypoint. The
 frontend container serves the SPA and proxies API/MCP traffic to the backend on
-the internal Docker network.
+the Compose network managed by Coolify.
 
 ## DNS
 
@@ -39,32 +39,39 @@ Value: <server IPv6 address>
 
 ## Coolify Domain
 
-In Coolify, attach the domain to the frontend service or the exposed application
-entrypoint:
+In Coolify, attach the domain to the `frontend` service:
 
 ```text
-learn.alexmbugua.me
+https://learn.alexmbugua.me
 ```
 
 Enable HTTPS/TLS in Coolify. Coolify should provision and renew certificates if
 DNS is pointed correctly.
 
-## Docker Compose Reverse Proxy
+## Docker Compose Routing
 
-The repository Compose file binds:
+For Coolify, do not define custom Compose networks and do not add host `ports:`
+for the public site. Coolify attaches the deployment to its managed network and
+Traefik reaches the frontend through the container's internal port.
 
-```text
-frontend: 127.0.0.1:8080
-openstudy: 127.0.0.1:8000
+Keep the frontend service configured with:
+
+```yaml
+expose:
+  - "80"
+labels:
+  - "traefik.http.services.frontend.loadbalancer.server.port=80"
 ```
 
-An outer proxy should send public HTTPS traffic to:
+Do not attach the public domain to the `openstudy` backend or `postgres`.
 
-```text
-127.0.0.1:8080
-```
+### Non-Coolify Reverse Proxy
 
-Example Caddy config:
+For a manually managed Docker host outside Coolify, you may choose to bind a
+host port and point an outer proxy at it. That is not the Coolify deployment
+shape used for `learn.alexmbugua.me`.
+
+Example Caddy config for a non-Coolify host:
 
 ```caddy
 learn.alexmbugua.me {
@@ -106,8 +113,8 @@ Keep this consistent with the domain users and Claude clients will access.
 From the server:
 
 ```bash
-curl -fsS http://127.0.0.1:8000/api/health
-curl -fsS http://127.0.0.1:8080/
+docker compose exec openstudy curl -fsS http://localhost:8000/api/health
+docker compose exec frontend wget --spider -q http://localhost/
 ```
 
 From outside:
@@ -141,6 +148,7 @@ Suggested cache bypass paths:
 - Pointing DNS to the backend port instead of the frontend entrypoint.
 - Forgetting to rebuild after changing `PUBLIC_SITE_URL`.
 - Using a Cloudflare mode that creates redirect loops.
+- Defining custom Compose networks in Coolify, which can make Traefik choose
+  the wrong upstream container IP and return `504 Gateway Timeout`.
 - Exposing Postgres to the public internet.
 - Testing only `/` and not `/api/health` or `/mcp` connectivity.
-

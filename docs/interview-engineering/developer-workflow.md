@@ -55,6 +55,13 @@ docker compose exec openstudy scripts/curriculum/deploy_seed_openstudy.sh --dry-
 docker compose exec openstudy scripts/curriculum/deploy_seed_openstudy.sh --verbose
 ```
 
+In deployed Coolify containers, use the prebuilt manifest:
+
+```bash
+docker compose exec openstudy scripts/curriculum/deploy_seed_openstudy.sh --skip-generate --dry-run --verbose
+docker compose exec openstudy scripts/curriculum/deploy_seed_openstudy.sh --skip-generate --verbose
+```
+
 ## Tests And Static Checks
 
 Run curriculum tests:
@@ -150,4 +157,3 @@ Before opening a PR or merging:
 - Add a generated documentation summary from the manifest.
 - Add importer support for adaptive scheduling based on dependency graph and
   cognitive load.
-

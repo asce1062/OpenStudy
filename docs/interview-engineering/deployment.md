@@ -1,8 +1,8 @@
 # Deployment
 
 Curriculum seeding is a post-deploy operation. Deploy the OpenStudy app, run
-database migrations, verify health, then generate, validate, dry-run, and apply
-the curriculum seed.
+database migrations, verify health, then validate, dry-run, and apply the
+curriculum seed from the prebuilt manifest.
 
 ## Existing Deployment Flow
 
@@ -23,9 +23,9 @@ The curriculum helper does not replace this. It runs after deployment.
 ```mermaid
 flowchart TD
     Deploy["./deploy.sh"] --> Health["/api/health ok"]
-    Health --> DryRun["deploy_seed_openstudy.sh --dry-run --verbose"]
+    Health --> DryRun["deploy_seed_openstudy.sh --skip-generate --dry-run --verbose"]
     DryRun --> Review["review create/update counts"]
-    Review --> Apply["deploy_seed_openstudy.sh --verbose"]
+    Review --> Apply["deploy_seed_openstudy.sh --skip-generate --verbose"]
     Apply --> Dashboard["OpenStudy dashboard contains IE course/tasks"]
 ```
 
@@ -34,8 +34,8 @@ flowchart TD
 Run the helper inside the backend container:
 
 ```bash
-docker compose exec openstudy scripts/curriculum/deploy_seed_openstudy.sh --dry-run --verbose
-docker compose exec openstudy scripts/curriculum/deploy_seed_openstudy.sh --verbose
+docker compose exec openstudy scripts/curriculum/deploy_seed_openstudy.sh --skip-generate --dry-run --verbose
+docker compose exec openstudy scripts/curriculum/deploy_seed_openstudy.sh --skip-generate --verbose
 ```
 
 This is preferred because the container already has:
@@ -55,12 +55,14 @@ scripts/curriculum/deploy_seed_openstudy.sh
 
 It runs:
 
-1. `python scripts/curriculum/create_manifest.py --output curriculum/interview_manifest.v2.yaml --force`
+1. optionally `python scripts/curriculum/create_manifest.py --output curriculum/interview_manifest.v2.yaml --force`
 2. `python scripts/curriculum/validate_manifest.py curriculum/interview_manifest.v2.yaml`
 3. `python scripts/curriculum/seed_openstudy.py --manifest curriculum/interview_manifest.v2.yaml --dry-run --verbose`
 4. `python scripts/curriculum/seed_openstudy.py --manifest curriculum/interview_manifest.v2.yaml --verbose`
 
-Use `--dry-run` to skip step 4.
+Use `--dry-run` to skip step 4. In production containers, use
+`--skip-generate` because the image ships with the prebuilt manifest and only
+the flashcard asset files required at runtime, not the full source submodules.
 
 ## Environment Variables
 
@@ -77,8 +79,9 @@ PGPORT
 In the Coolify-ready Compose file, database and application values are injected
 through environment variable substitution. Configure them in Coolify, export
 them in the shell before local Compose runs, or provide them through whatever
-secret manager your deployment platform uses. The app container reaches
-Postgres on the internal Docker network.
+secret manager your deployment platform uses. In Coolify, let the platform
+manage the Compose network rather than defining custom networks in the Compose
+file.
 
 Required runtime values:
 
@@ -156,11 +159,15 @@ Also back up any file storage under `/opt/courses` if you have learner files.
 - Do not commit real secrets or generated local env files.
 - Treat curriculum source repositories as read-only inputs.
 - Review generated manifest diffs before applying production seeds.
+- In Coolify, do not publish host ports or define custom networks for the
+  public frontend route; use `expose: "80"` and the Traefik service-port label.
 
 ## Common Mistakes
 
 - Running the seed helper before migrations.
 - Running from the host without DB environment variables.
 - Forgetting `--dry-run` before production seed.
-- Assuming asset files are copied into OpenStudy storage.
+- Running production seeding without `--skip-generate`.
+- Defining custom Compose networks in Coolify and causing proxy 504s.
+- Assuming packaged flashcard assets are copied into OpenStudy storage.
 - Rolling back the container and assuming database seed changes rolled back too.
