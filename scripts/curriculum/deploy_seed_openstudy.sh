@@ -2,8 +2,8 @@
 # Regenerate, validate, and seed the OpenStudy curriculum manifest.
 #
 # Intended for manual server-side use after deployment and DB migrations:
-#   scripts/curriculum/deploy_seed_openstudy.sh --dry-run
-#   scripts/curriculum/deploy_seed_openstudy.sh --verbose
+#   scripts/curriculum/deploy_seed_openstudy.sh --skip-generate --dry-run --verbose
+#   scripts/curriculum/deploy_seed_openstudy.sh --skip-generate --verbose
 
 set -Eeuo pipefail
 
@@ -20,6 +20,8 @@ SKIP_GENERATE=0
 SKIP_VALIDATE=0
 FORCE=1
 VERBOSE=0
+RUNTIME="host"
+AUTO_SKIP_GENERATE=0
 
 if command -v tput >/dev/null 2>&1 && [ -t 1 ]; then
     BOLD="$(tput bold)"
@@ -44,12 +46,20 @@ Usage:
 
 Options:
   --dry-run          Generate, validate, and run seed dry-run only.
-  --skip-generate   Skip create_manifest.py.
+  --skip-generate   Skip create_manifest.py and use the prebuilt manifest.
   --skip-validate   Skip validate_manifest.py.
   --force           Pass --force to create_manifest.py. Enabled by default.
   --verbose         Enable verbose output throughout.
   --manifest PATH   Override manifest path.
   -h, --help        Show this help.
+
+Production containers typically use:
+  scripts/curriculum/deploy_seed_openstudy.sh --skip-generate --dry-run --verbose
+  scripts/curriculum/deploy_seed_openstudy.sh --skip-generate --verbose
+
+Manifests are expected to be prebuilt during development or CI and included in
+the image. Production images do not need curriculum/sources or .git metadata;
+when sources are absent, validation runs in manifest-only mode.
 USAGE
 }
 
@@ -151,6 +161,16 @@ require_file() {
     [ -f "$1" ] || die "required file missing: $1"
 }
 
+detect_runtime() {
+    if [ -f /.dockerenv ]; then
+        RUNTIME="container"
+    elif grep -qaE '/docker/|/kubepods/|/containerd/' /proc/1/cgroup 2>/dev/null; then
+        RUNTIME="container"
+    else
+        RUNTIME="host"
+    fi
+}
+
 require_db_env() {
     local missing=()
     local name
@@ -166,36 +186,38 @@ require_db_env() {
 }
 
 print_context() {
-    local container_state="host"
-    if [ -f /.dockerenv ]; then
-        container_state="container"
-    elif grep -qaE '/docker/|/kubepods/|/containerd/' /proc/1/cgroup 2>/dev/null; then
-        container_state="container"
-    fi
-
     log "${BOLD}OpenStudy curriculum seed helper${RESET}"
     log "Repo root: $REPO_ROOT"
     log "Manifest: $MANIFEST"
     log "Environment: ${APP_ENV:-${ENVIRONMENT:-${NODE_ENV:-unset}}}"
-    log "Runtime: $container_state"
+    log "Runtime: $RUNTIME"
     log "Dry-run mode: $([ "$DRY_RUN" -eq 1 ] && printf 'yes' || printf 'no')"
     log "Verbose: $([ "$VERBOSE" -eq 1 ] && printf 'yes' || printf 'no')"
+    log "Generate manifest: $([ "$SKIP_GENERATE" -eq 1 ] && printf 'no' || printf 'yes')"
 
-    if [ "$container_state" = "host" ]; then
+    if [ "$RUNTIME" = "host" ]; then
         warn "not running inside a detected container; ensure DB environment variables point at the deployed database"
+    elif [ "$AUTO_SKIP_GENERATE" -eq 1 ]; then
+        warn "container runtime detected without curriculum/sources; using prebuilt manifest and skipping generation"
+    elif [ "$SKIP_GENERATE" -eq 0 ]; then
+        warn "container runtime detected; production usually uses --skip-generate with the prebuilt manifest"
     fi
 }
 
 preflight() {
     cd "$REPO_ROOT"
-    [ -d ".git" ] || die "repo root sanity check failed: .git missing at $REPO_ROOT"
 
     PYTHON_BIN="$(python_bin)"
     export PYTHON_BIN
 
-    require_file "scripts/curriculum/create_manifest.py"
+    require_file "app/main.py"
     require_file "scripts/curriculum/validate_manifest.py"
     require_file "scripts/curriculum/seed_openstudy.py"
+    if [ "$SKIP_GENERATE" -eq 0 ]; then
+        require_file "scripts/curriculum/create_manifest.py"
+    else
+        require_file "$MANIFEST"
+    fi
 
     log "Python: $("$PYTHON_BIN" --version 2>&1)"
 }
@@ -222,13 +244,20 @@ validate_manifest() {
         return
     fi
 
-    run_cmd "$PYTHON_BIN" "scripts/curriculum/validate_manifest.py" "$MANIFEST"
+    local cmd=("$PYTHON_BIN" "scripts/curriculum/validate_manifest.py" "$MANIFEST")
+    if [ ! -d "$REPO_ROOT/curriculum/sources" ]; then
+        cmd+=("--allow-missing-source-files")
+    fi
+    run_cmd "${cmd[@]}"
 }
 
 seed_dry_run() {
     require_db_env
-    run_cmd "$PYTHON_BIN" "scripts/curriculum/seed_openstudy.py" \
-        "--manifest" "$MANIFEST" "--dry-run" "--verbose"
+    local cmd=("$PYTHON_BIN" "scripts/curriculum/seed_openstudy.py" "--manifest" "$MANIFEST" "--dry-run" "--verbose")
+    if [ ! -d "$REPO_ROOT/curriculum/sources" ]; then
+        cmd+=("--allow-missing-source-files")
+    fi
+    run_cmd "${cmd[@]}"
 }
 
 seed_apply() {
@@ -239,6 +268,9 @@ seed_apply() {
 
     require_db_env
     local cmd=("$PYTHON_BIN" "scripts/curriculum/seed_openstudy.py" "--manifest" "$MANIFEST")
+    if [ ! -d "$REPO_ROOT/curriculum/sources" ]; then
+        cmd+=("--allow-missing-source-files")
+    fi
     if [ "$VERBOSE" -eq 1 ]; then
         cmd+=("--verbose")
     fi
@@ -247,6 +279,11 @@ seed_apply() {
 
 main() {
     parse_args "$@"
+    detect_runtime
+    if [ "$RUNTIME" = "container" ] && [ "$SKIP_GENERATE" -eq 0 ] && [ ! -d "$REPO_ROOT/curriculum/sources" ]; then
+        SKIP_GENERATE=1
+        AUTO_SKIP_GENERATE=1
+    fi
     print_context
     preflight
 

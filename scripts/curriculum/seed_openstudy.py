@@ -24,6 +24,7 @@ sys.path.insert(0, str(REPO_ROOT))
 
 from app import db  # noqa: E402
 from scripts.curriculum.validate_manifest import (  # noqa: E402
+    ValidationOptions,
     load_manifest as load_manifest_for_validation,
 )
 from scripts.curriculum.validate_manifest import validate_manifest  # noqa: E402
@@ -84,11 +85,15 @@ def stable_course_code(manifest: dict[str, Any], explicit: str | None = None) ->
     return DEFAULT_COURSE_CODE
 
 
-def read_manifest(path: Path) -> dict[str, Any]:
+def read_manifest(path: Path, *, allow_missing_source_files: bool = False) -> dict[str, Any]:
     data, exit_code = load_manifest_for_validation(path)
     if data is None:
         raise ValueError(f"could not load manifest {path} (exit {exit_code})")
-    result = validate_manifest(data, path)
+    result = validate_manifest(
+        data,
+        path,
+        ValidationOptions(allow_missing_source_files=allow_missing_source_files),
+    )
     if result.errors:
         messages = "; ".join(f"{issue.path}: {issue.message}" for issue in result.errors[:5])
         raise ValueError(
@@ -614,6 +619,14 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         default=None,
         help=f"OpenStudy course code to seed into (default: {DEFAULT_COURSE_CODE}).",
     )
+    parser.add_argument(
+        "--allow-missing-source-files",
+        action="store_true",
+        help=(
+            "Allow seeding from a packaged manifest when curriculum/sources files "
+            "are intentionally absent from the runtime image."
+        ),
+    )
     return parser.parse_args(argv)
 
 
@@ -623,7 +636,10 @@ async def async_main(argv: list[str]) -> int:
     if not manifest_path.is_absolute():
         manifest_path = REPO_ROOT / manifest_path
     try:
-        manifest = read_manifest(manifest_path)
+        manifest = read_manifest(
+            manifest_path,
+            allow_missing_source_files=args.allow_missing_source_files,
+        )
     except ValueError as exc:
         print(f"Could not seed manifest: {exc}", file=sys.stderr)
         return 2
