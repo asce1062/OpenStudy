@@ -36,7 +36,15 @@ PGHOST
 PGPORT
 ```
 
-Inside the `openstudy` container, these come from Docker Compose env files.
+Inside the `openstudy` container, these come from Coolify/Compose-injected
+environment variables.
+
+For deployed Coolify containers, prefer the helper with the prebuilt manifest:
+
+```bash
+scripts/curriculum/deploy_seed_openstudy.sh --skip-generate --dry-run --verbose
+scripts/curriculum/deploy_seed_openstudy.sh --skip-generate --verbose
+```
 
 ## What Gets Seeded
 
@@ -211,11 +219,14 @@ Fix errors before seeding. Warnings do not block seeding.
 
 ### Assets Warn As Missing
 
-Check that source submodules are present and that the asset path exists under
-the expected source repository.
+In development, check that source submodules are present and that the asset path
+exists under the expected source repository.
+
+In production, check that the image contains the six whitelisted flashcard files
+under `/app/curriculum/sources`. The image intentionally excludes full source
+repositories.
 
 ### Duplicate Rows Appear
 
 Do not manually edit seed markers in `courses.notes`, `study_topics.notes`, or
 `tasks.description`. They are used to find existing rows.
-

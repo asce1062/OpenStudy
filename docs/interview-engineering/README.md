@@ -81,16 +81,16 @@ python scripts/curriculum/seed_openstudy.py --verbose
 Run the server-side helper after deployment and migrations:
 
 ```bash
-scripts/curriculum/deploy_seed_openstudy.sh --dry-run --verbose
-scripts/curriculum/deploy_seed_openstudy.sh --verbose
+scripts/curriculum/deploy_seed_openstudy.sh --skip-generate --dry-run --verbose
+scripts/curriculum/deploy_seed_openstudy.sh --skip-generate --verbose
 ```
 
 Inside Docker Compose, use the app container so the database environment is
 already available:
 
 ```bash
-docker compose exec openstudy scripts/curriculum/deploy_seed_openstudy.sh --dry-run --verbose
-docker compose exec openstudy scripts/curriculum/deploy_seed_openstudy.sh --verbose
+docker compose exec openstudy scripts/curriculum/deploy_seed_openstudy.sh --skip-generate --dry-run --verbose
+docker compose exec openstudy scripts/curriculum/deploy_seed_openstudy.sh --skip-generate --verbose
 ```
 
 ## Why A Manifest
@@ -110,4 +110,3 @@ This gives future automation a stable contract:
 - keep custom curriculum work isolated from upstream source repositories
 
 See [Architecture](./architecture.md) for the end-to-end model.
-

@@ -13,7 +13,11 @@ Compose behavior. Adjust names to match your project and server.
 - Services: `postgres`, `openstudy`, `frontend`.
 - Persistent database volume or bind mount for Postgres data.
 - Persistent course file bind mount for `/opt/courses`.
-- Public domain points to the frontend service.
+- Public domain points to the `frontend` service.
+- Compose does not define custom networks; Coolify manages service/proxy
+  networking.
+- The `frontend` service exposes internal port `80` and carries the Traefik
+  service-port label.
 
 ## Environment Variables
 
@@ -84,7 +88,7 @@ After Coolify deploys successfully and migrations have run, open a shell in the
 `openstudy` container and run:
 
 ```bash
-scripts/curriculum/deploy_seed_openstudy.sh --dry-run --verbose
+scripts/curriculum/deploy_seed_openstudy.sh --skip-generate --dry-run --verbose
 ```
 
 Review the output. For an empty database, expect roughly:
@@ -101,10 +105,52 @@ Lessons/tasks: create=113, update=0
 Then apply:
 
 ```bash
-scripts/curriculum/deploy_seed_openstudy.sh --verbose
+scripts/curriculum/deploy_seed_openstudy.sh --skip-generate --verbose
 ```
 
 Repeat runs should show updates instead of creates.
+
+Production images include the generated manifest and the whitelisted flashcard
+asset files. They do not include full source submodules, so production seeding
+should use `--skip-generate`.
+
+## Public Routing
+
+The working Coolify setup keeps the domain attached only to the `frontend`
+service:
+
+```text
+https://learn.alexmbugua.me
+```
+
+The frontend service should keep:
+
+```yaml
+expose:
+  - "80"
+labels:
+  - "traefik.http.services.frontend.loadbalancer.server.port=80"
+```
+
+Do not add host `ports:` mappings for the public site in Coolify. Do not attach
+the domain to `openstudy` or `postgres`.
+
+### Networking
+
+Coolify Compose applications should let Coolify create and attach the deployment
+network. Do not define custom Compose networks for this deployment. Custom
+networks can cause Traefik to choose the wrong container network address, which
+can present as a public `504 Gateway Timeout` even when the frontend is healthy
+inside the app network.
+
+The final working shape is:
+
+- no service-level `networks:` entries
+- no top-level `networks:` block
+- `frontend` exposes internal port `80`
+- `frontend` has the Traefik load balancer port label
+- `postgres` has no public route
+- `openstudy` has no public route; frontend proxies API traffic to it
 
 ## Updating The Curriculum
 
@@ -121,6 +167,13 @@ Repeat runs should show updates instead of creates.
 
 Check backend logs and database connectivity. The curriculum seed should wait
 until app deployment and migrations are healthy.
+
+### Public Site Returns 504 Gateway Timeout
+
+Verify the domain is attached to the `frontend` service, not the backend. Check
+that `docker-compose.yml` has no custom `networks:` block and no service-level
+network assignments. Keep `frontend` on internal port `80` via `expose` and the
+Traefik service-port label.
 
 ### Seed Helper Cannot Find Python
 
