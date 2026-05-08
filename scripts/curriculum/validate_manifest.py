@@ -10,6 +10,7 @@ Or validate a specific manifest:
 from __future__ import annotations
 
 import argparse
+import os
 import re
 import sys
 from collections import defaultdict
@@ -1266,7 +1267,12 @@ def main(argv: list[str] | None = None) -> int:
     result = validate_manifest(
         data,
         manifest_path,
-        ValidationOptions(allow_missing_source_files=args.allow_missing_source_files),
+        ValidationOptions(
+            allow_missing_source_files=(
+                args.allow_missing_source_files
+                or os.environ.get("OPENSTUDY_PACKAGED_CURRICULUM") == "1"
+            )
+        ),
     )
     print_summary(manifest_path, result)
     return 1 if result.errors else 0

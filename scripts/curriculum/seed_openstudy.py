@@ -13,6 +13,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import os
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -92,7 +93,12 @@ def read_manifest(path: Path, *, allow_missing_source_files: bool = False) -> di
     result = validate_manifest(
         data,
         path,
-        ValidationOptions(allow_missing_source_files=allow_missing_source_files),
+        ValidationOptions(
+            allow_missing_source_files=(
+                allow_missing_source_files
+                or os.environ.get("OPENSTUDY_PACKAGED_CURRICULUM") == "1"
+            )
+        ),
     )
     if result.errors:
         messages = "; ".join(f"{issue.path}: {issue.message}" for issue in result.errors[:5])

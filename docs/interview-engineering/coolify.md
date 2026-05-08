@@ -134,13 +134,15 @@ or configure them in the Coolify shell environment.
 
 ### Manifest Generation Fails
 
-Check that `curriculum/sources/*` exists in the deployed image. If source repos
-are Git submodules, make sure the deployment process checks out submodules.
+Production containers normally use the prebuilt manifest with
+`--skip-generate`; they do not include full source repositories or submodules.
+Regenerate the manifest during development or CI, then redeploy the image.
 
 ### Assets Warn As Missing
 
-The source repository was not present or the asset path changed. Regenerate the
-manifest after fixing the source checkout.
+Check that the packaged image contains the whitelisted flashcard files under
+`/app/curriculum/sources`. Full source repositories are still intentionally
+excluded.
 
 ## Common Mistakes
 
