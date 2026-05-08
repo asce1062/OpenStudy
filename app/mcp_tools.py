@@ -18,6 +18,8 @@ from typing import Any, Optional
 from mcp.server.fastmcp import FastMCP, Image as MCPImage
 
 from .schemas import (
+    AgendaActionRequest,
+    AgendaResultRequest,
     AppSettingsPatch,
     CourseCreate,
     CoursePatch,
@@ -136,6 +138,105 @@ def register_tools(server: FastMCP) -> None:
             await agenda_svc.generate_daily_agenda(
                 target_date=target_date,
                 course_code=course_code,
+            )
+        )
+
+    @server.tool()
+    async def complete_agenda_item(
+        agenda_item_id: str,
+        source_ref: Optional[dict] = None,
+        confidence: Optional[int] = None,
+        duration_minutes: Optional[int] = None,
+        notes: Optional[str] = None,
+        error_count: Optional[int] = None,
+        completed_count: Optional[int] = None,
+        total_count: Optional[int] = None,
+    ) -> dict:
+        """Complete an agenda item and apply safe source mutations.
+
+        Study-topic items are marked studied, task items are marked done,
+        and generated/file activities are recorded as agenda events."""
+        return _jsonable(
+            await agenda_svc.complete_agenda_item(
+                agenda_item_id,
+                AgendaActionRequest(
+                    source_ref=source_ref,
+                    confidence=confidence,
+                    duration_minutes=duration_minutes,
+                    notes=notes,
+                    error_count=error_count,
+                    completed_count=completed_count,
+                    total_count=total_count,
+                ),
+            )
+        )
+
+    @server.tool()
+    async def skip_agenda_item(
+        agenda_item_id: str,
+        source_ref: Optional[dict] = None,
+        reason: Optional[str] = None,
+    ) -> dict:
+        """Skip an agenda item for the current agenda date without mutating
+        the source object. The skip is recorded as an event."""
+        return _jsonable(
+            await agenda_svc.skip_agenda_item(
+                agenda_item_id,
+                AgendaActionRequest(source_ref=source_ref, reason=reason),
+            )
+        )
+
+    @server.tool()
+    async def snooze_agenda_item(
+        agenda_item_id: str,
+        source_ref: Optional[dict] = None,
+        snooze_until: Optional[str] = None,
+        snooze_minutes: Optional[int] = None,
+        reason: Optional[str] = None,
+    ) -> dict:
+        """Snooze an agenda item until an ISO datetime or for a number of
+        minutes. Snoozed items are suppressed until the snooze expires."""
+        return _jsonable(
+            await agenda_svc.snooze_agenda_item(
+                agenda_item_id,
+                AgendaActionRequest(
+                    source_ref=source_ref,
+                    snooze_until=datetime.fromisoformat(snooze_until)
+                    if snooze_until
+                    else None,
+                    snooze_minutes=snooze_minutes,
+                    reason=reason,
+                ),
+            )
+        )
+
+    @server.tool()
+    async def log_agenda_result(
+        agenda_item_id: str,
+        outcome: str,
+        source_ref: Optional[dict] = None,
+        confidence: Optional[int] = None,
+        duration_minutes: Optional[int] = None,
+        notes: Optional[str] = None,
+        error_count: Optional[int] = None,
+        completed_count: Optional[int] = None,
+        total_count: Optional[int] = None,
+    ) -> dict:
+        """Log an execution result for an agenda item. Use this when the
+        outcome is partial, failed, skipped, or needs richer metrics."""
+        return _jsonable(
+            await agenda_svc.log_agenda_result(
+                agenda_item_id,
+                AgendaResultRequest(
+                    outcome=outcome,  # type: ignore[arg-type]
+                    source_ref=source_ref,
+                    confidence=confidence,
+                    duration_minutes=duration_minutes,
+                    notes=notes,
+                    error_count=error_count,
+                    completed_count=completed_count,
+                    total_count=total_count,
+                ),
             )
         )
 
