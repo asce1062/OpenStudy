@@ -58,4 +58,11 @@ def test_build_manifest_discovers_flashcards_and_compresses_practice_repos(tmp_p
     assert "ie-module-practice-c" in module_ids
     assert "ie-module-practice-cpp" in module_ids
     assert "ie-module-practice-python" in module_ids
-    assert first["meta"]["estimated_total_hours"] > 238
+    assert first["meta"]["effort_model"]["kind"] == "elastic"
+    assert first["meta"]["effort_model"]["agenda_is_source_of_truth"] is True
+    assert all("estimated_hours" not in module for track in first["tracks"] for module in track["modules"])
+    assert all(
+        module["estimated_effort_band"] in {"light", "standard", "deep", "multi-session"}
+        for track in first["tracks"]
+        for module in track["modules"]
+    )

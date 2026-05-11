@@ -7,7 +7,6 @@ meta:
   owner: Alex Mbugua
   format: openstudy-curriculum-manifest
   status: draft
-  estimated_total_hours: 281.8
   attribution_note: 'This manifest is an original study plan that references local source repositories by path and heading.
     It intentionally avoids copying large portions of upstream content.
 
@@ -23,6 +22,14 @@ meta:
       pc: Practice C sourced lesson
       pcpp: Practice C++ sourced lesson
       py: Practice Python sourced lesson
+  effort_model:
+    kind: elastic
+    bands:
+      light: 45-90 minutes
+      standard: 90-150 minutes
+      deep: 3-5 hours
+      multi-session: requires repeated sessions and retries
+    agenda_is_source_of_truth: true
 sources:
 - id: coding-interview-university
   name: Coding Interview University
@@ -82,7 +89,6 @@ tracks:
     difficulty:
       level: beginner
       score: 1
-    estimated_hours: 10.0
     tags:
     - planning
     - study-skills
@@ -108,6 +114,18 @@ tracks:
         level: beginner
         score: 1
       cognitive_load: low
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: ciu-choose-primary-language
       title: Choose and configure the primary interview language
       type:
@@ -127,6 +145,18 @@ tracks:
         level: beginner
         score: 1
       cognitive_load: low
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: icc-set-up-coding-challenge-workflow
       title: Set up the coding challenge workflow
       type:
@@ -146,6 +176,18 @@ tracks:
         level: beginner
         score: 1
       cognitive_load: low
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: icc-learn-notebook-structure
       title: Learn the challenge notebook structure
       type:
@@ -165,6 +207,18 @@ tracks:
         level: beginner
         score: 1
       cognitive_load: low
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: ie-create-study-cadence
       title: Create a repeatable daily study cadence
       type:
@@ -177,7 +231,7 @@ tracks:
         path: README.md
         heading: The Daily Plan
       estimated_minutes: 90
-      completion_criteria: Publish a weekly schedule with reading, implementation, review, and mock interview blocks.
+      completion_criteria: Define flexible availability windows for reading, implementation, review, and mock interview work.
       suggested_order: 5
       depends_on:
       - icc-learn-notebook-structure
@@ -185,6 +239,18 @@ tracks:
         level: beginner
         score: 1
       cognitive_load: low
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: ie-baseline-diagnostic
       title: Complete a baseline diagnostic
       type:
@@ -205,15 +271,32 @@ tracks:
         level: beginner
         score: 1
       cognitive_load: high
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     suggested_order: 1
     depends_on: []
+    estimated_effort_band: multi-session
+    expected_retry_density: medium
+    cognitive_load: medium
+    decay_risk: medium
+    interview_frequency: medium
+    current_mastery_state: not_started
   - id: ie-module-complexity-and-problem-solving
     name: Big-O and Problem Solving
     description: Build the complexity vocabulary and repeatable approach used in coding interviews.
     difficulty:
       level: beginner
       score: 1
-    estimated_hours: 12.2
     tags:
     - big-o
     - complexity
@@ -241,6 +324,18 @@ tracks:
         level: beginner
         score: 1
       cognitive_load: medium
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: ciu-amortized-analysis
       title: Understand amortized analysis
       type:
@@ -260,6 +355,18 @@ tracks:
         level: beginner
         score: 1
       cognitive_load: low
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: ciu-recurrence-relations
       title: Practice recurrence relations and divide-and-conquer costs
       type:
@@ -279,6 +386,18 @@ tracks:
         level: beginner
         score: 1
       cognitive_load: medium
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: ciu-complexity-cheat-sheet-review
       title: Review common data structure and algorithm costs
       type:
@@ -298,6 +417,18 @@ tracks:
         level: beginner
         score: 1
       cognitive_load: low
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: icc-time-space-tradeoff-drills
       title: Drill time-space tradeoffs
       type:
@@ -316,6 +447,18 @@ tracks:
         level: beginner
         score: 1
       cognitive_load: medium
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: ie-explain-before-code-checkpoint
       title: Explain-before-code checkpoint
       type:
@@ -336,16 +479,33 @@ tracks:
         level: beginner
         score: 1
       cognitive_load: medium
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     suggested_order: 2
     depends_on:
     - ie-module-foundations-and-study-setup
+    estimated_effort_band: multi-session
+    expected_retry_density: low
+    cognitive_load: medium
+    decay_risk: medium
+    interview_frequency: medium
+    current_mastery_state: not_started
   - id: ie-module-arrays-strings-and-hashing
     name: Arrays, Strings, and Hashing
     description: Cover the highest-frequency sequence, map, and string interview patterns.
     difficulty:
       level: beginner
       score: 1
-    estimated_hours: 19.8
     tags:
     - arrays
     - strings
@@ -374,6 +534,18 @@ tracks:
         level: beginner
         score: 1
       cognitive_load: medium
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: ie-implement-vector-project
       title: Implement a vector-style dynamic array
       type:
@@ -394,6 +566,18 @@ tracks:
         level: beginner
         score: 1
       cognitive_load: high
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: icc-unique-characters
       title: Determine if a string contains unique characters
       type:
@@ -412,6 +596,18 @@ tracks:
         level: beginner
         score: 1
       cognitive_load: medium
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: icc-string-permutation-and-rotation
       title: Solve permutation and rotation string checks
       type:
@@ -430,6 +626,18 @@ tracks:
         level: beginner
         score: 1
       cognitive_load: medium
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: icc-string-compression-and-reversal
       title: Practice string compression and in-place reversal
       type:
@@ -448,6 +656,18 @@ tracks:
         level: beginner
         score: 1
       cognitive_load: medium
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: ciu-hash-table-concepts
       title: Study hash table design
       type:
@@ -467,6 +687,18 @@ tracks:
         level: beginner
         score: 1
       cognitive_load: medium
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: icc-implement-hash-table
       title: Implement a hash table
       type:
@@ -485,6 +717,18 @@ tracks:
         level: beginner
         score: 1
       cognitive_load: medium
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: ie-arrays-strings-checkpoint
       title: Arrays, strings, and hashing timed checkpoint
       type:
@@ -505,16 +749,33 @@ tracks:
         level: beginner
         score: 1
       cognitive_load: medium
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     suggested_order: 3
     depends_on:
     - ie-module-complexity-and-problem-solving
+    estimated_effort_band: multi-session
+    expected_retry_density: medium
+    cognitive_load: medium
+    decay_risk: medium
+    interview_frequency: medium
+    current_mastery_state: not_started
   - id: ie-module-linked-lists-stacks-and-queues
     name: Linked Lists, Stacks, and Queues
     description: Build pointer fluency and the linear container patterns common in phone screens.
     difficulty:
       level: beginner
       score: 2
-    estimated_hours: 22.2
     tags:
     - linked-lists
     - stacks
@@ -542,6 +803,18 @@ tracks:
         level: beginner
         score: 2
       cognitive_load: medium
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: icc-implement-linked-list
       title: Implement a linked list
       type:
@@ -560,6 +833,18 @@ tracks:
         level: beginner
         score: 2
       cognitive_load: medium
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: icc-linked-list-classic-problems
       title: Solve duplicate removal, kth-to-last, and middle delete
       type:
@@ -578,6 +863,18 @@ tracks:
         level: beginner
         score: 2
       cognitive_load: medium
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: icc-linked-list-two-pointer-problems
       title: Solve partition, loop start, and palindrome linked-list problems
       type:
@@ -596,6 +893,18 @@ tracks:
         level: beginner
         score: 2
       cognitive_load: medium
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: ciu-stacks-and-queues-concepts
       title: Study stacks and queues
       type:
@@ -615,6 +924,18 @@ tracks:
         level: beginner
         score: 2
       cognitive_load: low
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: icc-implement-stack-and-queue
       title: Implement stack and queue primitives
       type:
@@ -633,6 +954,18 @@ tracks:
         level: beginner
         score: 2
       cognitive_load: medium
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: icc-stack-queue-interview-variants
       title: Solve stack and queue interview variants
       type:
@@ -651,6 +984,18 @@ tracks:
         level: beginner
         score: 2
       cognitive_load: medium
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: ie-linear-structures-checkpoint
       title: Linear structures checkpoint
       type:
@@ -671,16 +1016,33 @@ tracks:
         level: beginner
         score: 2
       cognitive_load: medium
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     suggested_order: 4
     depends_on:
     - ie-module-arrays-strings-and-hashing
+    estimated_effort_band: multi-session
+    expected_retry_density: low
+    cognitive_load: medium
+    decay_risk: medium
+    interview_frequency: medium
+    current_mastery_state: not_started
   - id: ie-module-recursion-dynamic-programming-and-math
     name: Recursion, Dynamic Programming, and Math
     description: Convert recursive reasoning into memoized, bottom-up, and combinatorial solutions.
     difficulty:
       level: intermediate
       score: 3
-    estimated_hours: 30.0
     tags:
     - recursion
     - dynamic-programming
@@ -709,6 +1071,18 @@ tracks:
         level: intermediate
         score: 3
       cognitive_load: medium
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: icc-fibonacci-and-steps
       title: Implement Fibonacci and staircase variants
       type:
@@ -727,6 +1101,18 @@ tracks:
         level: intermediate
         score: 3
       cognitive_load: medium
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: icc-combinatorics-recursion
       title: Practice permutations, subsets, parentheses, and Hanoi
       type:
@@ -745,6 +1131,18 @@ tracks:
         level: intermediate
         score: 3
       cognitive_load: high
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: icc-dynamic-programming-core
       title: Solve core dynamic programming problems
       type:
@@ -763,6 +1161,18 @@ tracks:
         level: intermediate
         score: 3
       cognitive_load: high
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: icc-knapsack-and-optimization-dp
       title: Solve knapsack and optimization DP problems
       type:
@@ -781,6 +1191,18 @@ tracks:
         level: intermediate
         score: 3
       cognitive_load: high
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: ciu-bitwise-operations
       title: Study and practice bitwise operations
       type:
@@ -800,6 +1222,18 @@ tracks:
         level: intermediate
         score: 3
       cognitive_load: medium
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: icc-bit-manipulation-challenges
       title: Solve bit manipulation challenges
       type:
@@ -818,6 +1252,18 @@ tracks:
         level: intermediate
         score: 3
       cognitive_load: medium
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: icc-math-and-prime-challenges
       title: Practice math and prime-number challenges
       type:
@@ -836,6 +1282,18 @@ tracks:
         level: intermediate
         score: 3
       cognitive_load: medium
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: ie-recursion-dp-checkpoint
       title: Recursion and DP checkpoint
       type:
@@ -856,16 +1314,33 @@ tracks:
         level: intermediate
         score: 3
       cognitive_load: medium
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     suggested_order: 5
     depends_on:
     - ie-module-linked-lists-stacks-and-queues
+    estimated_effort_band: multi-session
+    expected_retry_density: low
+    cognitive_load: medium
+    decay_risk: high
+    interview_frequency: medium
+    current_mastery_state: not_started
   - id: ie-module-trees-heaps-tries-and-graphs
     name: Trees, Heaps, Tries, and Graphs
     description: Build fluency with hierarchical and graph traversal problems.
     difficulty:
       level: intermediate
       score: 3
-    estimated_hours: 33.0
     tags:
     - trees
     - binary-search-trees
@@ -896,6 +1371,18 @@ tracks:
         level: intermediate
         score: 3
       cognitive_load: medium
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: icc-tree-dfs-bfs-height
       title: Implement tree DFS, BFS, and height
       type:
@@ -914,6 +1401,18 @@ tracks:
         level: intermediate
         score: 3
       cognitive_load: medium
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: ciu-binary-search-trees
       title: Study binary search trees
       type:
@@ -933,6 +1432,18 @@ tracks:
         level: intermediate
         score: 3
       cognitive_load: medium
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: icc-bst-challenges
       title: Solve binary search tree challenges
       type:
@@ -951,6 +1462,18 @@ tracks:
         level: intermediate
         score: 3
       cognitive_load: high
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: ciu-heap-and-priority-queue
       title: Study heaps and priority queues
       type:
@@ -970,6 +1493,18 @@ tracks:
         level: intermediate
         score: 3
       cognitive_load: medium
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: icc-implement-min-heap-and-priority-queue
       title: Implement heap and priority queue structures
       type:
@@ -988,6 +1523,18 @@ tracks:
         level: intermediate
         score: 3
       cognitive_load: medium
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: icc-trie-and-tree-variants
       title: Solve trie and tree variant problems
       type:
@@ -1006,6 +1553,18 @@ tracks:
         level: intermediate
         score: 3
       cognitive_load: medium
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: ciu-graph-concepts
       title: Study graph representation and traversal
       type:
@@ -1026,6 +1585,18 @@ tracks:
         level: intermediate
         score: 3
       cognitive_load: medium
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: icc-graph-challenges
       title: Solve graph implementation and traversal challenges
       type:
@@ -1044,6 +1615,18 @@ tracks:
         level: intermediate
         score: 3
       cognitive_load: high
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: ie-trees-graphs-checkpoint
       title: Trees and graphs checkpoint
       type:
@@ -1064,16 +1647,33 @@ tracks:
         level: intermediate
         score: 3
       cognitive_load: medium
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     suggested_order: 6
     depends_on:
     - ie-module-recursion-dynamic-programming-and-math
+    estimated_effort_band: multi-session
+    expected_retry_density: low
+    cognitive_load: medium
+    decay_risk: high
+    interview_frequency: medium
+    current_mastery_state: not_started
   - id: ie-module-sorting-searching-and-order-statistics
     name: Sorting, Searching, and Order Statistics
     description: Learn implementation details, stability, runtime tradeoffs, and search patterns.
     difficulty:
       level: intermediate
       score: 4
-    estimated_hours: 19.0
     tags:
     - sorting
     - searching
@@ -1101,6 +1701,18 @@ tracks:
         level: intermediate
         score: 4
       cognitive_load: medium
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: icc-rotated-array-search
       title: Search a sorted rotated array
       type:
@@ -1119,6 +1731,18 @@ tracks:
         level: intermediate
         score: 4
       cognitive_load: medium
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: icc-sorted-matrix-search
       title: Search a sorted matrix
       type:
@@ -1137,6 +1761,18 @@ tracks:
         level: intermediate
         score: 4
       cognitive_load: medium
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: ciu-sorting-concepts
       title: Study sorting algorithms and stability
       type:
@@ -1156,6 +1792,18 @@ tracks:
         level: intermediate
         score: 4
       cognitive_load: medium
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: icc-elementary-sorts
       title: Implement selection and insertion sort
       type:
@@ -1174,6 +1822,18 @@ tracks:
         level: intermediate
         score: 4
       cognitive_load: medium
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: icc-divide-and-conquer-sorts
       title: Implement merge sort and quicksort
       type:
@@ -1192,6 +1852,18 @@ tracks:
         level: intermediate
         score: 4
       cognitive_load: medium
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: icc-linear-and-bucket-style-sorts
       title: Implement radix sort
       type:
@@ -1210,6 +1882,18 @@ tracks:
         level: intermediate
         score: 4
       cognitive_load: medium
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: icc-merge-and-group-sorted-data
       title: Merge and group sorted data
       type:
@@ -1228,6 +1912,18 @@ tracks:
         level: intermediate
         score: 4
       cognitive_load: medium
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: ie-sorting-searching-checkpoint
       title: Sorting and searching checkpoint
       type:
@@ -1248,16 +1944,33 @@ tracks:
         level: intermediate
         score: 4
       cognitive_load: medium
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     suggested_order: 7
     depends_on:
     - ie-module-trees-heaps-tries-and-graphs
+    estimated_effort_band: multi-session
+    expected_retry_density: low
+    cognitive_load: medium
+    decay_risk: medium
+    interview_frequency: medium
+    current_mastery_state: not_started
   - id: ie-module-coding-challenge-practice-loop
     name: Coding Challenge Practice Loop
     description: Turn topic knowledge into repeatable interview performance.
     difficulty:
       level: intermediate
       score: 4
-    estimated_hours: 20.0
     tags:
     - practice
     - testing
@@ -1286,6 +1999,18 @@ tracks:
         level: intermediate
         score: 4
       cognitive_load: medium
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: icc-arrays-and-online-judge-mixed-set
       title: Complete arrays and online judge mixed set
       type:
@@ -1304,6 +2029,18 @@ tracks:
         level: intermediate
         score: 4
       cognitive_load: high
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: icc-graph-and-dp-mixed-set
       title: Complete graph and DP mixed set
       type:
@@ -1323,6 +2060,18 @@ tracks:
         level: intermediate
         score: 4
       cognitive_load: high
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: ie-review-solutions-after-delay
       title: Review solutions after a delay
       type:
@@ -1343,6 +2092,18 @@ tracks:
         level: intermediate
         score: 4
       cognitive_load: medium
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: icc-unit-test-discipline
       title: Practice unit-test discipline
       type:
@@ -1362,6 +2123,18 @@ tracks:
         level: intermediate
         score: 4
       cognitive_load: medium
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: ie-timed-phone-screen-set
       title: Complete a timed phone-screen problem set
       type:
@@ -1382,8 +2155,20 @@ tracks:
         level: intermediate
         score: 4
       cognitive_load: medium
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: ie-weekly-error-log
-      title: Maintain a weekly error log
+      title: Maintain an adaptive error log
       type:
         category: checkpoint
         medium: manifest
@@ -1403,16 +2188,33 @@ tracks:
         level: intermediate
         score: 4
       cognitive_load: medium
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     suggested_order: 8
     depends_on:
     - ie-module-sorting-searching-and-order-statistics
+    estimated_effort_band: multi-session
+    expected_retry_density: medium
+    cognitive_load: medium
+    decay_risk: medium
+    interview_frequency: medium
+    current_mastery_state: not_started
   - id: ie-module-system-design-foundations
     name: System Design Foundations
     description: Establish the vocabulary and interview method for scalable service design.
     difficulty:
       level: intermediate
       score: 5
-    estimated_hours: 16.8
     tags:
     - system-design
     - scalability
@@ -1440,6 +2242,18 @@ tracks:
         level: intermediate
         score: 5
       cognitive_load: medium
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: sdp-system-design-primer-index
       title: Review the system design topic index
       type:
@@ -1460,6 +2274,18 @@ tracks:
         level: intermediate
         score: 5
       cognitive_load: medium
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: sdp-scalability-start-here
       title: Start with scalability fundamentals
       type:
@@ -1479,6 +2305,18 @@ tracks:
         level: intermediate
         score: 5
       cognitive_load: medium
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: sdp-performance-latency-throughput
       title: Distinguish performance, scalability, latency, and throughput
       type:
@@ -1498,6 +2336,18 @@ tracks:
         level: intermediate
         score: 5
       cognitive_load: medium
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: sdp-system-design-interview-method
       title: Learn the system design interview method
       type:
@@ -1517,6 +2367,18 @@ tracks:
         level: intermediate
         score: 5
       cognitive_load: medium
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: sdp-back-of-the-envelope-calculations
       title: Practice back-of-the-envelope calculations
       type:
@@ -1536,6 +2398,18 @@ tracks:
         level: intermediate
         score: 5
       cognitive_load: medium
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: sdp-latency-numbers-review
       title: Memorize core latency numbers
       type:
@@ -1555,6 +2429,18 @@ tracks:
         level: intermediate
         score: 5
       cognitive_load: medium
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: ie-first-system-design-checkpoint
       title: First system design checkpoint
       type:
@@ -1575,16 +2461,33 @@ tracks:
         level: intermediate
         score: 5
       cognitive_load: high
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     suggested_order: 9
     depends_on:
     - ie-module-coding-challenge-practice-loop
+    estimated_effort_band: multi-session
+    expected_retry_density: low
+    cognitive_load: medium
+    decay_risk: high
+    interview_frequency: medium
+    current_mastery_state: not_started
   - id: ie-module-distributed-systems-and-networking
     name: Distributed Systems and Networking
     description: Learn the reliability, consistency, networking, and API concepts behind scalable services.
     difficulty:
       level: advanced
       score: 6
-    estimated_hours: 20.0
     tags:
     - distributed-systems
     - consistency
@@ -1613,6 +2516,18 @@ tracks:
         level: advanced
         score: 6
       cognitive_load: high
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: sdp-consistency-patterns
       title: Compare consistency patterns
       type:
@@ -1632,6 +2547,18 @@ tracks:
         level: advanced
         score: 6
       cognitive_load: high
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: sdp-availability-patterns
       title: Compare availability patterns
       type:
@@ -1651,6 +2578,18 @@ tracks:
         level: advanced
         score: 6
       cognitive_load: high
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: sdp-dns-and-cdn
       title: Study DNS and CDNs
       type:
@@ -1670,6 +2609,18 @@ tracks:
         level: advanced
         score: 6
       cognitive_load: high
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: sdp-load-balancing-and-proxies
       title: Study load balancers and reverse proxies
       type:
@@ -1689,6 +2640,18 @@ tracks:
         level: advanced
         score: 6
       cognitive_load: high
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: sdp-application-layer-and-service-discovery
       title: Study application layer scaling and service discovery
       type:
@@ -1708,6 +2671,18 @@ tracks:
         level: advanced
         score: 6
       cognitive_load: high
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: sdp-communication-protocols
       title: Compare HTTP, TCP, UDP, RPC, and REST
       type:
@@ -1727,6 +2702,18 @@ tracks:
         level: advanced
         score: 6
       cognitive_load: high
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: sdp-security-basics
       title: Review system design security basics
       type:
@@ -1746,6 +2733,18 @@ tracks:
         level: advanced
         score: 6
       cognitive_load: high
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: ie-distributed-systems-checkpoint
       title: Distributed systems tradeoff checkpoint
       type:
@@ -1766,16 +2765,33 @@ tracks:
         level: advanced
         score: 6
       cognitive_load: high
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     suggested_order: 10
     depends_on:
     - ie-module-system-design-foundations
+    estimated_effort_band: multi-session
+    expected_retry_density: low
+    cognitive_load: medium
+    decay_risk: medium
+    interview_frequency: medium
+    current_mastery_state: not_started
   - id: ie-module-data-storage-caching-and-queues
     name: Data Storage, Caching, and Queues
     description: Cover the persistence and asynchronous processing choices that dominate system design interviews.
     difficulty:
       level: advanced
       score: 7
-    estimated_hours: 23.0
     tags:
     - databases
     - sql
@@ -1805,6 +2821,18 @@ tracks:
         level: advanced
         score: 7
       cognitive_load: high
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: sdp-federation-sharding-denormalization
       title: Study federation, sharding, denormalization, and SQL tuning
       type:
@@ -1824,6 +2852,18 @@ tracks:
         level: advanced
         score: 7
       cognitive_load: high
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: sdp-nosql-models
       title: Study NoSQL data models
       type:
@@ -1843,6 +2883,18 @@ tracks:
         level: advanced
         score: 7
       cognitive_load: high
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: ie-sql-vs-nosql
       title: Choose SQL or NoSQL
       type:
@@ -1863,6 +2915,18 @@ tracks:
         level: advanced
         score: 7
       cognitive_load: high
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: sdp-caching-layers
       title: Study caching layers
       type:
@@ -1882,6 +2946,18 @@ tracks:
         level: advanced
         score: 7
       cognitive_load: high
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: sdp-cache-update-patterns
       title: Compare cache update patterns
       type:
@@ -1901,6 +2977,18 @@ tracks:
         level: advanced
         score: 7
       cognitive_load: high
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: sdp-asynchronous-processing
       title: Study asynchronous processing
       type:
@@ -1920,6 +3008,18 @@ tracks:
         level: advanced
         score: 7
       cognitive_load: high
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: ie-data-layer-design-project
       title: Design a data layer for a feed-style product
       type:
@@ -1939,6 +3039,18 @@ tracks:
         level: advanced
         score: 7
       cognitive_load: high
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: ie-storage-cache-queues-checkpoint
       title: Storage, cache, and queue checkpoint
       type:
@@ -1959,16 +3071,33 @@ tracks:
         level: advanced
         score: 7
       cognitive_load: high
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     suggested_order: 11
     depends_on:
     - ie-module-distributed-systems-and-networking
+    estimated_effort_band: multi-session
+    expected_retry_density: medium
+    cognitive_load: medium
+    decay_risk: high
+    interview_frequency: medium
+    current_mastery_state: not_started
   - id: ie-module-system-design-interview-practice
     name: System Design Interview Practice
     description: Apply the interview method to worked examples and new design prompts.
     difficulty:
       level: advanced
       score: 7
-    estimated_hours: 27.0
     tags:
     - system-design
     - mock-interviews
@@ -1996,6 +3125,18 @@ tracks:
         level: advanced
         score: 7
       cognitive_load: high
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: sdp-twitter-timeline-and-search
       title: Design Twitter timeline and search
       type:
@@ -2014,6 +3155,18 @@ tracks:
         level: advanced
         score: 7
       cognitive_load: high
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: sdp-web-crawler
       title: Design a web crawler
       type:
@@ -2032,6 +3185,18 @@ tracks:
         level: advanced
         score: 7
       cognitive_load: high
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: sdp-social-graph
       title: Design a social graph
       type:
@@ -2050,6 +3215,18 @@ tracks:
         level: advanced
         score: 7
       cognitive_load: high
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: sdp-sales-rank
       title: Design category sales ranking
       type:
@@ -2068,6 +3245,18 @@ tracks:
         level: advanced
         score: 7
       cognitive_load: high
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: sdp-query-cache
       title: Design a query cache
       type:
@@ -2086,6 +3275,18 @@ tracks:
         level: advanced
         score: 7
       cognitive_load: high
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: sdp-aws-scaling-case-study
       title: Study scaling to millions of users on AWS
       type:
@@ -2104,6 +3305,18 @@ tracks:
         level: advanced
         score: 7
       cognitive_load: high
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: sdp-object-oriented-design-practice
       title: Practice object-oriented design interview prompts
       type:
@@ -2123,6 +3336,18 @@ tracks:
         level: advanced
         score: 7
       cognitive_load: high
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: ie-blank-page-design-drill
       title: Complete a blank-page system design drill
       type:
@@ -2143,16 +3368,33 @@ tracks:
         level: advanced
         score: 7
       cognitive_load: high
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     suggested_order: 12
     depends_on:
     - ie-module-data-storage-caching-and-queues
+    estimated_effort_band: multi-session
+    expected_retry_density: low
+    cognitive_load: medium
+    decay_risk: high
+    interview_frequency: medium
+    current_mastery_state: not_started
   - id: ie-module-capstone-review-and-mock-interviews
     name: Capstone Review and Mock Interviews
     description: Consolidate algorithm and design skills into interview-ready performance.
     difficulty:
       level: advanced
       score: 8
-    estimated_hours: 19.0
     tags:
     - review
     - mock-interviews
@@ -2180,6 +3422,18 @@ tracks:
         level: advanced
         score: 8
       cognitive_load: high
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: ie-flashcard-and-notes-review
       title: Review flashcards and personal notes
       type:
@@ -2200,6 +3454,18 @@ tracks:
         level: advanced
         score: 8
       cognitive_load: high
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: ciu-resume-and-story-review
       title: Update resume and technical stories
       type:
@@ -2219,6 +3485,18 @@ tracks:
         level: advanced
         score: 8
       cognitive_load: high
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: ciu-interview-process-review
       title: Review interview process and behavioral preparation
       type:
@@ -2238,6 +3516,18 @@ tracks:
         level: advanced
         score: 8
       cognitive_load: high
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: ie-coding-mock-one
       title: Complete coding mock interview one
       type:
@@ -2258,6 +3548,18 @@ tracks:
         level: advanced
         score: 8
       cognitive_load: high
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: ie-coding-mock-two
       title: Complete coding mock interview two
       type:
@@ -2278,6 +3580,18 @@ tracks:
         level: advanced
         score: 8
       cognitive_load: high
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: ie-system-design-mock
       title: Complete a system design mock interview
       type:
@@ -2299,6 +3613,18 @@ tracks:
         level: advanced
         score: 8
       cognitive_load: high
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: ie-capstone-project-review
       title: Create a capstone interview readiness packet
       type:
@@ -2320,6 +3646,18 @@ tracks:
         level: advanced
         score: 8
       cognitive_load: high
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: ie-readiness-checkpoint
       title: Final readiness checkpoint
       type:
@@ -2340,16 +3678,39 @@ tracks:
         level: advanced
         score: 8
       cognitive_load: high
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     suggested_order: 13
     depends_on:
     - ie-module-system-design-interview-practice
+    estimated_effort_band: multi-session
+    expected_retry_density: high
+    cognitive_load: medium
+    decay_risk: medium
+    interview_frequency: medium
+    current_mastery_state: not_started
   - id: ie-module-practice-c
     name: Practice C Implementation Practice
     description: Use the supplemental practice repository as a compact implementation drill rather than a large task expansion.
     difficulty:
       level: intermediate
       score: 4
-    estimated_hours: 3.2
+    estimated_effort_band: deep
+    expected_retry_density: low
+    cognitive_load: high
+    decay_risk: high
+    interview_frequency: high
+    current_mastery_state: not_started
     tags:
     - implementation-practice
     - practice-c
@@ -2376,6 +3737,18 @@ tracks:
         level: intermediate
         score: 4
       cognitive_load: medium
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: ie-practice-c-implementation-drill
       title: Complete a Practice C implementation drill
       type:
@@ -2394,6 +3767,18 @@ tracks:
         level: intermediate
         score: 5
       cognitive_load: high
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
       inferred: true
   - id: ie-module-practice-cpp
     name: Practice C++ Implementation Practice
@@ -2401,7 +3786,12 @@ tracks:
     difficulty:
       level: intermediate
       score: 4
-    estimated_hours: 3.2
+    estimated_effort_band: deep
+    expected_retry_density: low
+    cognitive_load: high
+    decay_risk: high
+    interview_frequency: high
+    current_mastery_state: not_started
     tags:
     - implementation-practice
     - practice-c-plus-plus
@@ -2428,6 +3818,18 @@ tracks:
         level: intermediate
         score: 4
       cognitive_load: medium
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: ie-practice-cpp-implementation-drill
       title: Complete a Practice C++ implementation drill
       type:
@@ -2446,6 +3848,18 @@ tracks:
         level: intermediate
         score: 5
       cognitive_load: high
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
       inferred: true
   - id: ie-module-practice-python
     name: Practice Python Implementation Practice
@@ -2453,7 +3867,12 @@ tracks:
     difficulty:
       level: intermediate
       score: 4
-    estimated_hours: 3.2
+    estimated_effort_band: deep
+    expected_retry_density: low
+    cognitive_load: high
+    decay_risk: high
+    interview_frequency: high
+    current_mastery_state: not_started
     tags:
     - implementation-practice
     - practice-python
@@ -2480,6 +3899,18 @@ tracks:
         level: intermediate
         score: 4
       cognitive_load: medium
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
     - id: ie-practice-python-implementation-drill
       title: Complete a Practice Python implementation drill
       type:
@@ -2498,6 +3929,18 @@ tracks:
         level: intermediate
         score: 5
       cognitive_load: high
+      mastery_state: not_started
+      retry_metadata:
+        retry_count: 0
+        last_attempted_at: null
+        last_completed_at: null
+        last_reviewed_at: null
+        next_review_at: null
+        last_confidence: null
+        error_count: 0
+        failure_reason: null
+        struggle_tags: []
+        retry_priority: 0
       inferred: true
   depends_on: []
 assets:
@@ -2537,7 +3980,7 @@ assets:
   usage:
     openstudy_readable: false
     import_into_anki: true
-    review_cadence: weekly
+    review_cadence: spaced
 - id: sdp-flashcards-oo-design
   title: System Design Primer OO Design Anki Deck
   kind: flashcard-deck
@@ -2550,7 +3993,7 @@ assets:
   usage:
     openstudy_readable: false
     import_into_anki: true
-    review_cadence: weekly
+    review_cadence: spaced
 - id: sdp-flashcards-system-design
   title: System Design Primer System Design Anki Deck
   kind: flashcard-deck
@@ -2563,7 +4006,7 @@ assets:
   usage:
     openstudy_readable: false
     import_into_anki: true
-    review_cadence: weekly
+    review_cadence: spaced
 - id: sdp-flashcards-system-design-exercises
   title: System Design Primer System Design Exercises Anki Deck
   kind: flashcard-deck
@@ -2576,4 +4019,4 @@ assets:
   usage:
     openstudy_readable: false
     import_into_anki: true
-    review_cadence: weekly
+    review_cadence: spaced

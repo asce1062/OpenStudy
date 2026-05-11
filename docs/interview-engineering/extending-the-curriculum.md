@@ -52,7 +52,10 @@ Add the module under the track with:
 - lowercase kebab-case `tags`
 - `prerequisites`
 - `depends_on`
-- sequential `suggested_order`
+- `suggested_order` as a weak tie-breaker only
+- mastery-unit metadata: `estimated_effort_band`, `expected_retry_density`,
+  `cognitive_load`, `decay_risk`, `interview_frequency`, and
+  `current_mastery_state`
 - a non-empty `lessons` list
 
 Regenerate:
@@ -92,7 +95,7 @@ Example:
     path: solutions/system_design/pastebin/README.md
   estimated_minutes: 90
   completion_criteria: Explain the API, data model, caching strategy, and scaling bottlenecks.
-  suggested_order: 4
+  suggested_order: 4  # weak tie-breaker only
   depends_on:
     - sdp-load-balancers
   difficulty:
@@ -175,4 +178,3 @@ Recommended order:
 - Adding generated modules that reorder curated modules unexpectedly.
 - Adding validation errors for harmless extra metadata.
 - Seeding before validating.
-

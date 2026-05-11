@@ -158,6 +158,7 @@ def course_metadata(manifest: dict[str, Any], course_code: str) -> dict[str, Any
             "id": track.get("id"),
             "name": track.get("name"),
             "suggested_order": track.get("suggested_order"),
+            "order_semantics": "weak_tiebreaker",
             "depends_on": track.get("depends_on", []),
         }
         for track in iter_tracks(manifest)
@@ -168,6 +169,22 @@ def course_metadata(manifest: dict[str, Any], course_code: str) -> dict[str, Any
         "schema_version": meta.get("schema_version") if isinstance(meta, dict) else None,
         "course_code": course_code,
         "meta": meta,
+        "adaptive_model": {
+            "agenda_is_source_of_truth": True,
+            "suggested_order_semantics": "weak_tiebreaker",
+            "mastery_states": [
+                "not_started",
+                "exposure",
+                "understanding",
+                "guided_practice",
+                "independent_practice",
+                "timed_execution",
+                "retry_stabilization",
+                "retention_verification",
+                "mastered",
+                "struggling",
+            ],
+        },
         "tracks": tracks,
     }
 
@@ -184,6 +201,7 @@ def module_metadata(
             "id": track.get("id"),
             "name": track.get("name"),
             "suggested_order": track.get("suggested_order"),
+            "order_semantics": "weak_tiebreaker",
             "depends_on": track.get("depends_on", []),
         },
         "module": {
@@ -191,11 +209,29 @@ def module_metadata(
             "name": module.get("name"),
             "description": module.get("description"),
             "difficulty": module.get("difficulty"),
-            "estimated_hours": module.get("estimated_hours"),
+            "estimated_effort_band": module.get("estimated_effort_band"),
+            "expected_retry_density": module.get("expected_retry_density"),
+            "cognitive_load": module.get("cognitive_load"),
+            "decay_risk": module.get("decay_risk"),
+            "interview_frequency": module.get("interview_frequency"),
+            "current_mastery_state": module.get("current_mastery_state", "not_started"),
             "tags": module.get("tags", []),
             "prerequisites": module.get("prerequisites", []),
             "depends_on": module.get("depends_on", []),
             "suggested_order": module.get("suggested_order"),
+            "suggested_order_semantics": "weak_tiebreaker",
+        },
+        "retry_metadata": {
+            "retry_count": 0,
+            "last_attempted_at": None,
+            "last_completed_at": None,
+            "last_reviewed_at": None,
+            "next_review_at": None,
+            "last_confidence": None,
+            "error_count": 0,
+            "failure_reason": None,
+            "struggle_tags": [],
+            "retry_priority": 0,
         },
     }
 
@@ -217,12 +253,30 @@ def lesson_metadata(
         "lesson_type": lesson.get("type"),
         "difficulty": lesson.get("difficulty"),
         "cognitive_load": lesson.get("cognitive_load"),
+        "mastery_state": lesson.get("mastery_state", "not_started"),
+        "retry_metadata": lesson.get(
+            "retry_metadata",
+            {
+                "retry_count": 0,
+                "last_attempted_at": None,
+                "last_completed_at": None,
+                "last_reviewed_at": None,
+                "next_review_at": None,
+                "last_confidence": None,
+                "error_count": 0,
+                "failure_reason": None,
+                "struggle_tags": [],
+                "retry_priority": 0,
+            },
+        ),
+        "estimated_effort_band": lesson.get("estimated_effort_band"),
         "completion_criteria": lesson.get("completion_criteria"),
         "estimated_minutes": lesson.get("estimated_minutes"),
         "source": lesson.get("source"),
         "inferred": lesson.get("inferred", False),
         "depends_on": lesson.get("depends_on", []),
         "suggested_order": lesson.get("suggested_order"),
+        "suggested_order_semantics": "weak_tiebreaker",
     }
 
 
@@ -352,14 +406,20 @@ async def upsert_module(
     if row:
         await db.execute(
             "UPDATE study_topics SET course_code = %s, chapter = %s, name = %s, "
-            "description = %s, kind = %s, status = %s, notes = %s, sort_order = %s "
+            "description = %s, kind = %s, status = %s, mastery_state = %s, "
+            "retry_count = %s, error_count = %s, retry_priority = %s, "
+            "notes = %s, sort_order = %s "
             "WHERE id = %s",
             course_code,
             track.get("name"),
             module.get("name"),
             module.get("description"),
             "reading",
-            "not_started",
+            row.get("status", "not_started") or "not_started",
+            module.get("current_mastery_state", "not_started"),
+            row.get("retry_count", 0) or 0,
+            row.get("error_count", 0) or 0,
+            row.get("retry_priority", 0) or 0,
             notes,
             module.get("suggested_order", 0),
             row["id"],
@@ -368,14 +428,15 @@ async def upsert_module(
     else:
         await db.execute(
             "INSERT INTO study_topics "
-            "(course_code, chapter, name, description, kind, status, notes, sort_order) "
-            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
+            "(course_code, chapter, name, description, kind, status, mastery_state, notes, sort_order) "
+            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
             course_code,
             track.get("name"),
             module.get("name"),
             module.get("description"),
             "reading",
             "not_started",
+            module.get("current_mastery_state", "not_started"),
             notes,
             module.get("suggested_order", 0),
         )
@@ -405,26 +466,32 @@ async def upsert_lesson(
     if row:
         await db.execute(
             "UPDATE tasks SET course_code = %s, title = %s, description = %s, "
-            "status = %s, priority = %s, tags = %s WHERE id = %s",
+            "status = %s, priority = %s, tags = %s, mastery_state = %s, "
+            "retry_count = %s, error_count = %s, retry_priority = %s WHERE id = %s",
             course_code,
             lesson.get("title"),
             description,
             row.get("status", "open") or "open",
             priority,
             lesson_tags(lesson, module),
+            row.get("mastery_state") or metadata["mastery_state"],
+            row.get("retry_count", 0) or 0,
+            row.get("error_count", 0) or 0,
+            row.get("retry_priority", 0) or 0,
             row["id"],
         )
         counts.update += 1
     else:
         await db.execute(
-            "INSERT INTO tasks (course_code, title, description, status, priority, tags) "
-            "VALUES (%s, %s, %s, %s, %s, %s)",
+            "INSERT INTO tasks (course_code, title, description, status, priority, tags, mastery_state) "
+            "VALUES (%s, %s, %s, %s, %s, %s, %s)",
             course_code,
             lesson.get("title"),
             description,
             "open",
             priority,
             lesson_tags(lesson, module),
+            metadata["mastery_state"],
         )
         counts.create += 1
 

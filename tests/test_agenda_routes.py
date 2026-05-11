@@ -87,6 +87,13 @@ async def test_complete_agenda_item_route_can_return_refreshed_agenda(db_conn, m
     assert response.status_code == 200, response.text
     body = response.json()
     assert body["outcome"] == "completed"
-    assert "study_topic:studied" in body["mutations_applied"]
+    assert "study_topic:mastery_state" in body["mutations_applied"]
     assert body["refresh_recommended"] is True
     assert body["agenda"] is not None
+
+    async with db_conn.connection() as conn, conn.cursor() as cur:
+        await cur.execute("SELECT status, mastery_state FROM study_topics WHERE name = 'Route topic'")
+        topic = await cur.fetchone()
+
+    assert topic["status"] == "in_progress"
+    assert topic["mastery_state"] == "independent_practice"

@@ -54,12 +54,13 @@ scripts/curriculum/deploy_seed_openstudy.sh --skip-generate --verbose
 | Track | `events` row with `kind = curriculum:track` |
 | Source | `events` row with `kind = curriculum:source` |
 | Asset | `events` row with `kind = curriculum:asset` |
-| Module | `study_topics` row |
-| Lesson | `tasks` row |
+| Module / mastery unit | `study_topics` row |
+| Lesson / practice atom | `tasks` row |
 | Dependencies | JSON metadata on tasks/modules/course events |
 
-The current OpenStudy schema does not have dedicated curriculum tables, so the
-seed script uses existing tables and metadata fields.
+The current OpenStudy schema keeps UI compatibility by using existing tables.
+Adaptive state is stored in first-class mastery/retry columns plus metadata
+fields for attribution and manifest details.
 
 ## Mapping Details
 
@@ -76,7 +77,7 @@ courses.code = IE
 
 ### Modules
 
-Modules become rows in `study_topics`.
+Modules become mastery-unit rows in `study_topics`.
 
 Important fields:
 
@@ -85,7 +86,11 @@ Important fields:
 - `name`: module name
 - `description`: module description
 - `kind`: `reading`
-- `sort_order`: module `suggested_order`
+- `sort_order`: weak tie-breaker from module `suggested_order`
+- `mastery_state`: current adaptive phase, initially `not_started`
+- retry columns: `retry_count`, `last_attempted_at`, `last_completed_at`,
+  `last_reviewed_at`, `next_review_at`, `last_confidence`, `error_count`,
+  `failure_reason`, `struggle_tags`, `retry_priority`
 - `notes`: marker plus JSON metadata
 
 ### Lessons
@@ -111,11 +116,16 @@ The metadata includes:
 - difficulty
 - cognitive load
 - completion criteria
-- estimated minutes
+- elastic effort band / duration hint
 - source reference
 - inferred flag
-- dependencies
-- suggested order
+- dependencies as attribution/context, not rigid gates
+- suggested order as a weak tie-breaker
+- mastery state and retry metadata
+
+Lesson tasks are not arbitrary dated milestones. They are exposure, reading,
+guided practice, independent practice, timed execution, retry, or retention
+atoms that the agenda can choose when learner state supports it.
 
 ### Sources, Assets, And Tracks
 
