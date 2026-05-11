@@ -24,15 +24,49 @@ async def _insert_topic(
     covered_on: date | None = None,
     confidence: int | None = None,
     sort_order: int = 0,
+    mastery_state: str | None = None,
+    retry_count: int = 0,
+    last_attempted_at: datetime | None = None,
+    last_completed_at: datetime | None = None,
+    last_reviewed_at: datetime | None = None,
+    next_review_at: datetime | None = None,
+    last_confidence: int | None = None,
+    error_count: int = 0,
+    failure_reason: str | None = None,
+    struggle_tags: list[str] | None = None,
+    retry_priority: int = 0,
 ) -> None:
     async with db_conn.connection() as conn, conn.cursor() as cur:
         await cur.execute(
             """
             INSERT INTO study_topics
-                (course_code, name, status, covered_on, confidence, sort_order)
-            VALUES (%s, %s, %s, %s, %s, %s)
+                (
+                    course_code, name, status, covered_on, confidence, sort_order,
+                    mastery_state, retry_count, last_attempted_at, last_completed_at,
+                    last_reviewed_at, next_review_at, last_confidence, error_count,
+                    failure_reason, struggle_tags, retry_priority
+                )
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """,
-            (course_code, name, status, covered_on, confidence, sort_order),
+            (
+                course_code,
+                name,
+                status,
+                covered_on,
+                confidence,
+                sort_order,
+                mastery_state,
+                retry_count,
+                last_attempted_at,
+                last_completed_at,
+                last_reviewed_at,
+                next_review_at,
+                last_confidence,
+                error_count,
+                failure_reason,
+                struggle_tags,
+                retry_priority,
+            ),
         )
 
 
@@ -44,14 +78,38 @@ async def _insert_task(
     due_at: datetime | None = None,
     priority: str = "med",
     status: str = "open",
+    mastery_state: str | None = None,
+    retry_count: int = 0,
+    next_review_at: datetime | None = None,
+    last_confidence: int | None = None,
+    error_count: int = 0,
+    retry_priority: int = 0,
+    tags: list[str] | None = None,
 ) -> None:
     async with db_conn.connection() as conn, conn.cursor() as cur:
         await cur.execute(
             """
-            INSERT INTO tasks (course_code, title, due_at, priority, status)
-            VALUES (%s, %s, %s, %s, %s)
+            INSERT INTO tasks (
+                course_code, title, due_at, priority, status, mastery_state,
+                retry_count, next_review_at, last_confidence, error_count,
+                retry_priority, tags
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """,
-            (course_code, title, due_at, priority, status),
+            (
+                course_code,
+                title,
+                due_at,
+                priority,
+                status,
+                mastery_state,
+                retry_count,
+                next_review_at,
+                last_confidence,
+                error_count,
+                retry_priority,
+                tags,
+            ),
         )
 
 
@@ -174,6 +232,121 @@ async def test_agenda_prioritizes_struggling_topics(client, db_conn):
 
 
 @pytest.mark.asyncio
+async def test_overdue_retry_items_outrank_struggling_and_new_lessons(client, db_conn):
+    from app.services import agenda as agenda_svc
+
+    await _seed_course(db_conn)
+    await _insert_topic(
+        db_conn,
+        name="Arrays retry queue",
+        status="in_progress",
+        confidence=3,
+        mastery_state="retry_stabilization",
+        retry_count=2,
+        error_count=3,
+        retry_priority=9,
+        next_review_at=datetime(2026, 5, 8, 8, tzinfo=timezone.utc),
+        sort_order=10,
+    )
+    await _insert_topic(
+        db_conn,
+        name="Graph traversal struggle",
+        status="struggling",
+        confidence=1,
+        mastery_state="struggling",
+        sort_order=1,
+    )
+    await _insert_task(
+        db_conn,
+        title="Fresh trie lesson",
+        mastery_state="not_started",
+        tags=["curriculum", "lesson:ie-fresh-trie", "module:ie-module-tries"],
+    )
+
+    agenda = await agenda_svc.generate_daily_agenda(
+        target_date=date(2026, 5, 9),
+        course_code="AGEN",
+    )
+
+    assert agenda.items[0].kind == "retry"
+    assert agenda.items[0].title == "Retry Arrays retry queue"
+    assert "overdue retry" in agenda.items[0].reason.lower()
+    assert agenda.items[0].duration_min_minutes == 45
+    assert agenda.items[0].duration_max_minutes == 90
+    assert agenda.items[0].mastery_phase == "retry_stabilization"
+    assert agenda.items[0].confidence_target == 4
+    assert "retry" in agenda.items[0].retry_behavior.lower()
+
+
+@pytest.mark.asyncio
+async def test_new_ie_lesson_is_selected_only_after_active_mastery_capacity(client, db_conn):
+    from app.services import agenda as agenda_svc
+
+    await _seed_course(db_conn, "IE")
+    await _insert_topic(
+        db_conn,
+        course_code="IE",
+        name="Arrays & Hashing",
+        status="in_progress",
+        confidence=3,
+        mastery_state="independent_practice",
+        sort_order=20,
+    )
+    await _insert_task(
+        db_conn,
+        course_code="IE",
+        title="Two Pointers Exposure",
+        mastery_state="not_started",
+        tags=["curriculum", "lesson:ie-two-pointers", "module:ie-module-two-pointers"],
+    )
+
+    agenda = await agenda_svc.generate_daily_agenda(
+        target_date=date(2026, 5, 9),
+        course_code="IE",
+    )
+
+    assert agenda.items[0].kind == "mastery_progression"
+    assert agenda.items[0].title == "Advance Arrays & Hashing"
+    assert "active mastery unit" in agenda.items[0].reason.lower()
+    kinds = [item.kind for item in agenda.items]
+    assert "new_exposure" in kinds
+    assert kinds.index("mastery_progression") < kinds.index("new_exposure")
+
+
+@pytest.mark.asyncio
+async def test_due_retention_check_is_scheduled_before_new_exposure(client, db_conn):
+    from app.services import agenda as agenda_svc
+
+    await _seed_course(db_conn, "IE")
+    await _insert_topic(
+        db_conn,
+        course_code="IE",
+        name="Sliding Window",
+        status="studied",
+        confidence=4,
+        mastery_state="retention_verification",
+        next_review_at=datetime(2026, 5, 8, 12, tzinfo=timezone.utc),
+        sort_order=30,
+    )
+    await _insert_task(
+        db_conn,
+        course_code="IE",
+        title="Backtracking Exposure",
+        mastery_state="not_started",
+        tags=["curriculum", "lesson:ie-backtracking", "module:ie-module-backtracking"],
+    )
+
+    agenda = await agenda_svc.generate_daily_agenda(
+        target_date=date(2026, 5, 9),
+        course_code="IE",
+    )
+
+    assert agenda.items[0].kind == "retention_check"
+    assert agenda.items[0].mastery_phase == "retention_verification"
+    assert "delayed retention" in agenda.items[0].completion_criteria.lower()
+
+
+@pytest.mark.asyncio
 async def test_fall_behind_warning_increases_review_priority(client, db_conn):
     from app.services import agenda as agenda_svc
 
@@ -271,7 +444,7 @@ async def test_real_agenda_items_do_not_include_planning_fallback(client, db_con
 
 
 @pytest.mark.asyncio
-async def test_complete_new_concept_marks_topic_studied(client, db_conn):
+async def test_complete_new_concept_uses_confidence_gate_for_mastery_state(client, db_conn):
     from app.schemas import AgendaActionRequest
     from app.services import agenda as agenda_svc
 
@@ -283,17 +456,63 @@ async def test_complete_new_concept_marks_topic_studied(client, db_conn):
     )
     item = next(item for item in generated.items if item.kind == "new_concept")
 
-    result = await agenda_svc.complete_agenda_item(
+    low_result = await agenda_svc.complete_agenda_item(
         item.id,
-        AgendaActionRequest(source_ref=item.source_ref, confidence=4),
+        AgendaActionRequest(source_ref=item.source_ref, confidence=2, error_count=2),
+    )
+
+    topic = await _get_topic_row(db_conn, "Binary search")
+    assert topic["status"] == "in_progress"
+    assert topic["mastery_state"] == "guided_practice"
+    assert topic["confidence"] == 2
+    assert topic["retry_count"] == 1
+    assert topic["next_review_at"] is not None
+    assert "study_topic:mastery_state" in low_result.mutations_applied
+
+    high_result = await agenda_svc.complete_agenda_item(
+        item.id,
+        AgendaActionRequest(source_ref=item.source_ref, confidence=5, error_count=0),
     )
 
     topic = await _get_topic_row(db_conn, "Binary search")
     assert topic["status"] == "studied"
-    assert topic["confidence"] == 4
-    assert result.outcome == "completed"
-    assert "study_topic:studied" in result.mutations_applied
-    assert result.event_id is not None
+    assert topic["mastery_state"] == "retention_verification"
+    assert topic["confidence"] == 5
+    assert topic["next_review_at"] is not None
+    assert high_result.event_id is not None
+
+
+@pytest.mark.asyncio
+async def test_completed_retention_check_can_mark_topic_mastered(client, db_conn):
+    from app.schemas import AgendaActionRequest
+    from app.services import agenda as agenda_svc
+
+    await _seed_course(db_conn)
+    await _insert_topic(
+        db_conn,
+        name="Heaps retention",
+        status="studied",
+        confidence=4,
+        mastery_state="retention_verification",
+        retry_count=0,
+        error_count=0,
+        next_review_at=datetime(2026, 5, 8, 9, tzinfo=timezone.utc),
+        sort_order=1,
+    )
+    generated = await agenda_svc.generate_daily_agenda(
+        target_date=date(2026, 5, 9),
+        course_code="AGEN",
+    )
+    item = next(item for item in generated.items if item.kind == "retention_check")
+
+    await agenda_svc.complete_agenda_item(
+        item.id,
+        AgendaActionRequest(source_ref=item.source_ref, confidence=5, error_count=0),
+    )
+
+    topic = await _get_topic_row(db_conn, "Heaps retention")
+    assert topic["status"] == "mastered"
+    assert topic["mastery_state"] == "mastered"
 
 
 @pytest.mark.asyncio

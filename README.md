@@ -209,8 +209,9 @@ This branch also includes a manifest-driven **Interview Engineering** learning
 dashboard for software engineering interview preparation. It uses local
 curriculum source repositories under `curriculum/sources/`, generates a
 deterministic schema v2 manifest, validates source references and dependencies,
-and seeds OpenStudy idempotently with modules, lesson tasks, assets, and
-metadata.
+and seeds OpenStudy idempotently with adaptive mastery units, lesson/practice
+atoms, retry metadata, assets, and source attribution. Daily agendas choose
+work from learner state rather than a fixed week plan.
 
 Start here: [`docs/interview-engineering/`](./docs/interview-engineering/).
 

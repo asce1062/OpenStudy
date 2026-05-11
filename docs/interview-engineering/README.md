@@ -1,9 +1,10 @@
 # Interview Engineering Curriculum
 
-Interview Engineering is a manifest-driven software engineering interview
-preparation system built on top of OpenStudy. It turns local curriculum source
-repositories into a seeded OpenStudy dashboard with courses, study topics,
-tasks, source references, flashcard metadata, and dependency information.
+Interview Engineering is an adaptive mastery system built on top of OpenStudy.
+It turns local curriculum source repositories into a seeded dashboard with
+mastery units, lesson/practice atoms, retry metadata, source references, and
+flashcard metadata. The daily agenda is the study plan: it chooses work from
+learner evidence instead of walking a fixed syllabus calendar.
 
 The system is designed for repeatable self-hosting. A maintainer can regenerate
 the manifest, validate it, preview the database changes, and seed the dashboard
@@ -47,10 +48,14 @@ At the time of writing, the generated manifest contains:
 
 - 7 source repositories
 - 1 track
-- 16 modules
+- 16 mastery units
 - 113 lessons
 - 6 flashcard assets
-- 281.8 estimated study hours
+- elastic effort bands instead of fixed pacing targets
+
+The course should answer what mastery unit is active, which phase it is in,
+what retry or retention work is overdue, what evidence supports advancing, and
+what should be delayed. It should not answer "what week are we in?"
 
 ## Core Commands
 
@@ -98,15 +103,16 @@ docker compose exec openstudy scripts/curriculum/deploy_seed_openstudy.sh --skip
 The source repositories are large, differently structured, and maintained
 upstream. OpenStudy should not copy or rewrite their content. The manifest
 preserves attribution through repository IDs, relative paths, and optional
-headings while adding OpenStudy-specific metadata such as estimated effort,
-difficulty, dependencies, cognitive load, and completion criteria.
+headings while adding OpenStudy-specific metadata such as elastic effort bands,
+mastery state, retry defaults, difficulty, cognitive load, and completion
+criteria.
 
 This gives future automation a stable contract:
 
 - import the same curriculum repeatedly without duplicates
 - update existing rows by stable IDs
 - preserve source attribution
-- add scheduling and recommendation logic later
+- drive agenda-informed recommendation logic from learner state
 - keep custom curriculum work isolated from upstream source repositories
 
 See [Architecture](./architecture.md) for the end-to-end model.

@@ -46,7 +46,9 @@ meta:
   name: Interview Engineering
   schema_version: 2
   timezone: Africa/Nairobi
-  estimated_total_hours: 281.8
+  effort_model:
+    kind: elastic
+    agenda_is_source_of_truth: true
 
 sources:
   - id: coding-interview-university
@@ -76,7 +78,8 @@ assets: []
 - `schema_version`: must be `2`
 - `timezone`: used for learner planning context
 - `owner`: curriculum owner
-- `estimated_total_hours`: recalculated from lesson estimates
+- `effort_model`: declares elastic planning bands and that agenda generation,
+  not a week plan, is the source of truth
 - `id_policy`: explains stable ID prefixes
 
 ### Sources
@@ -108,7 +111,8 @@ The schema supports `depends_on`, but the current track has no dependencies.
 
 ### Modules
 
-Modules group lessons by study phase.
+Modules are mastery units. They group concepts and practice atoms, but they do
+not imply fixed weeks or completion windows.
 
 ```yaml
 - id: ie-module-system-design-foundations
@@ -116,7 +120,12 @@ Modules group lessons by study phase.
   difficulty:
     level: intermediate
     score: 5
-  estimated_hours: 16.8
+  estimated_effort_band: multi-session
+  expected_retry_density: high
+  cognitive_load: high
+  decay_risk: high
+  interview_frequency: high
+  current_mastery_state: not_started
   tags:
     - system-design
   prerequisites:
@@ -127,8 +136,9 @@ Modules group lessons by study phase.
   lessons: []
 ```
 
-The current modules are ordered from foundations through coding practice,
-system design, capstone review, and supplemental implementation practice.
+`suggested_order` remains only as a weak tie-breaker. Agenda generation should
+prefer overdue retry work, struggling concepts, due reviews, active unit
+progression, timed execution, and then new exposure.
 
 ### Lessons
 
@@ -276,6 +286,5 @@ Warnings do not block seeding. Errors do.
 - Adding a lesson source path that does not exist under the declared source
   repository.
 - Adding too many granular practice lessons and making the dashboard noisy.
-- Changing `estimated_hours` manually instead of letting the generator
-  recalculate it from lessons.
-
+- Reintroducing fixed module-hour pacing targets instead of elastic effort
+  bands.

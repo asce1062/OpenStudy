@@ -169,10 +169,56 @@ def lesson(
         "depends_on": depends_on,
         "difficulty": difficulty(level, score),
         "cognitive_load": cognitive_load,
+        "mastery_state": "not_started",
+        "retry_metadata": {
+            "retry_count": 0,
+            "last_attempted_at": None,
+            "last_completed_at": None,
+            "last_reviewed_at": None,
+            "next_review_at": None,
+            "last_confidence": None,
+            "error_count": 0,
+            "failure_reason": None,
+            "struggle_tags": [],
+            "retry_priority": 0,
+        },
     }
     if inferred:
         data["inferred"] = True
     return data
+
+
+def effort_band(minutes: int) -> str:
+    if minutes <= 90:
+        return "light"
+    if minutes <= 150:
+        return "standard"
+    if minutes <= 300:
+        return "deep"
+    return "multi-session"
+
+
+def retry_density(lessons: list[dict[str, Any]]) -> str:
+    practice_count = sum(
+        1
+        for item in lessons
+        if isinstance(item.get("type"), dict)
+        and item["type"].get("category") in {"practice", "checkpoint", "project"}
+    )
+    if practice_count >= 5:
+        return "high"
+    if practice_count >= 2:
+        return "medium"
+    return "low"
+
+
+def decay_risk_for(tags: list[str], cognitive_load: str) -> str:
+    high_decay_tags = {"dynamic-programming", "graphs", "recursion", "system-design", "caching"}
+    if cognitive_load == "high" or high_decay_tags.intersection(tags):
+        return "high"
+    if cognitive_load == "medium":
+        return "medium"
+    return "low"
 
 
 def finalize_module(
@@ -188,13 +234,22 @@ def finalize_module(
     lessons: list[dict[str, Any]],
 ) -> dict[str, Any]:
     minutes = sum(int(item["estimated_minutes"]) for item in lessons)
-    estimated_hours = round(minutes / 60, 1)
+    max_load = "low"
+    if any(item.get("cognitive_load") == "high" for item in lessons):
+        max_load = "high"
+    elif any(item.get("cognitive_load") == "medium" for item in lessons):
+        max_load = "medium"
     return {
         "id": module_id,
         "name": name,
         "description": description,
         "difficulty": difficulty(level, score),
-        "estimated_hours": estimated_hours,
+        "estimated_effort_band": effort_band(minutes),
+        "expected_retry_density": retry_density(lessons),
+        "cognitive_load": max_load,
+        "decay_risk": decay_risk_for(tags, max_load),
+        "interview_frequency": "high" if score >= 2 else "medium",
+        "current_mastery_state": "not_started",
         "tags": tags,
         "prerequisites": prerequisites,
         "depends_on": depends_on,
@@ -264,7 +319,7 @@ def asset_for_path(source_id: str, source_root: Path, asset_path: Path) -> dict[
             "usage": {
                 "openstudy_readable": False,
                 "import_into_anki": True,
-                "review_cadence": "weekly",
+                "review_cadence": "spaced",
             },
         }
 
@@ -295,7 +350,7 @@ def asset_for_path(source_id: str, source_root: Path, asset_path: Path) -> dict[
             "usage": {
                 "openstudy_readable": False,
                 "import_into_anki": True,
-                "review_cadence": "weekly",
+                "review_cadence": "spaced",
             },
         }
 
@@ -313,7 +368,7 @@ def asset_for_path(source_id: str, source_root: Path, asset_path: Path) -> dict[
             "usage": {
                 "openstudy_readable": False,
                 "import_into_anki": True,
-                "review_cadence": "weekly",
+                "review_cadence": "spaced",
             },
         }
     if suffix == "db":
@@ -372,7 +427,7 @@ def build_core_modules(sources_root: Path) -> list[dict[str, Any]]:
                 "passive",
                 source_ref("coding-interview-university", "README.md"),
                 60,
-                "Record the study scope, weekly cadence, and personal constraints.",
+                "Record the study scope, adaptive cadence, and personal constraints.",
                 1,
                 [],
                 "beginner",
@@ -831,13 +886,13 @@ def build_core_modules(sources_root: Path) -> list[dict[str, Any]]:
             ),
             lesson(
                 "ie-weekly-flashcard-review",
-                "Schedule weekly flashcard review",
+                "Schedule spaced flashcard review",
                 "checkpoint",
                 "manifest",
                 "reflective",
                 manifest_ref(),
                 45,
-                "Complete a weekly review pass and note weak topics for the next study block.",
+                "Complete a spaced review pass and note weak topics for the next agenda.",
                 2,
                 ["ciu-flashcard-deck-orientation"],
                 "beginner",
@@ -1024,7 +1079,7 @@ def module_lesson_minutes(module: dict[str, Any]) -> int:
     )
 
 
-def recalculate_module_estimates(data: dict[str, Any]) -> None:
+def recalculate_module_effort_bands(data: dict[str, Any]) -> None:
     for track in data.get("tracks", []):
         if not isinstance(track, dict):
             continue
@@ -1036,7 +1091,33 @@ def recalculate_module_estimates(data: dict[str, Any]) -> None:
                 continue
             minutes = module_lesson_minutes(module)
             if minutes > 0:
-                module["estimated_hours"] = round(minutes / 60, 1)
+                module.pop("estimated_hours", None)
+                module["estimated_effort_band"] = effort_band(minutes)
+                lessons = module.get("lessons", [])
+                if isinstance(lessons, list):
+                    module["expected_retry_density"] = retry_density(lessons)
+                    for lesson_item in lessons:
+                        if isinstance(lesson_item, dict):
+                            lesson_item.setdefault("mastery_state", "not_started")
+                            lesson_item.setdefault(
+                                "retry_metadata",
+                                {
+                                    "retry_count": 0,
+                                    "last_attempted_at": None,
+                                    "last_completed_at": None,
+                                    "last_reviewed_at": None,
+                                    "next_review_at": None,
+                                    "last_confidence": None,
+                                    "error_count": 0,
+                                    "failure_reason": None,
+                                    "struggle_tags": [],
+                                    "retry_priority": 0,
+                                },
+                            )
+                module.setdefault("cognitive_load", "medium")
+                module.setdefault("decay_risk", decay_risk_for(module.get("tags", []), module["cognitive_load"]))
+                module.setdefault("interview_frequency", "medium")
+                module.setdefault("current_mastery_state", "not_started")
 
 
 def module_ids(data: dict[str, Any]) -> set[str]:
@@ -1071,13 +1152,23 @@ def enrich_base_manifest(base_data: dict[str, Any], sources_root: Path) -> dict[
             modules.append(build_practice_module(source_id, source_root, len(modules) + 1))
             existing_module_ids.add(module_id)
 
-    recalculate_module_estimates(data)
+    recalculate_module_effort_bands(data)
 
     meta = data.setdefault("meta", {})
     if not isinstance(meta, dict):
         raise ValueError("base manifest meta must be a mapping")
     meta["schema_version"] = 2
-    meta["estimated_total_hours"] = round(lesson_minutes(data) / 60, 1)
+    meta.pop("estimated_total_hours", None)
+    meta["effort_model"] = {
+        "kind": "elastic",
+        "bands": {
+            "light": "45-90 minutes",
+            "standard": "90-150 minutes",
+            "deep": "3-5 hours",
+            "multi-session": "requires repeated sessions and retries",
+        },
+        "agenda_is_source_of_truth": True,
+    }
     id_policy = meta.setdefault("id_policy", {})
     if isinstance(id_policy, dict):
         prefixes = id_policy.setdefault("lesson_prefixes", {})
@@ -1094,13 +1185,6 @@ def build_compact_manifest(sources_root: Path) -> dict[str, Any]:
     sources = discover_source_metadata(resolved_sources_root)
     assets = discover_assets(resolved_sources_root)
     tracks = build_tracks(resolved_sources_root)
-    estimated_minutes = sum(
-        int(lesson["estimated_minutes"])
-        for track in tracks
-        for module in track["modules"]
-        for lesson in module["lessons"]
-    )
-
     return {
         "meta": {
             "id": "ie-curriculum-interview-engineering",
@@ -1112,7 +1196,16 @@ def build_compact_manifest(sources_root: Path) -> dict[str, Any]:
             "format": "openstudy-curriculum-manifest",
             "status": "draft",
             "schema_version": 2,
-            "estimated_total_hours": round(estimated_minutes / 60, 1),
+            "effort_model": {
+                "kind": "elastic",
+                "bands": {
+                    "light": "45-90 minutes",
+                    "standard": "90-150 minutes",
+                    "deep": "3-5 hours",
+                    "multi-session": "requires repeated sessions and retries",
+                },
+                "agenda_is_source_of_truth": True,
+            },
             "attribution_note": (
                 "This generated manifest references local source repositories by path and metadata. "
                 "It intentionally avoids copying large portions of upstream content."

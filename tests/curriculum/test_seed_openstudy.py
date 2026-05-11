@@ -61,7 +61,12 @@ def sample_manifest() -> dict[str, Any]:
                         "name": "Foundations",
                         "description": "Study setup",
                         "difficulty": {"level": "beginner", "score": 1},
-                        "estimated_hours": 1.5,
+                        "estimated_effort_band": "light",
+                        "expected_retry_density": "medium",
+                        "cognitive_load": "medium",
+                        "decay_risk": "medium",
+                        "interview_frequency": "medium",
+                        "current_mastery_state": "not_started",
                         "tags": ["setup"],
                         "prerequisites": [],
                         "depends_on": [],
@@ -210,6 +215,41 @@ async def test_dependencies_are_preserved_in_task_metadata(
     assert row is not None
     metadata = json.loads(row["description"].split("\n", 1)[1])
     assert metadata["depends_on"] == ["ciu-first-lesson"]
+    assert metadata["suggested_order_semantics"] == "weak_tiebreaker"
+
+
+async def test_seed_preserves_adaptive_mastery_metadata(
+    db_conn: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    use_test_db(db_conn, monkeypatch)
+
+    await seed_manifest_data(sample_manifest())
+
+    async with db_conn.connection() as conn, conn.cursor() as cur:
+        await cur.execute(
+            "SELECT mastery_state, notes FROM study_topics WHERE name = 'Foundations'"
+        )
+        module_row = await cur.fetchone()
+        await cur.execute(
+            "SELECT mastery_state, retry_count, error_count, retry_priority, description "
+            "FROM tasks WHERE title = 'First Lesson'"
+        )
+        lesson_row = await cur.fetchone()
+
+    assert module_row is not None
+    assert lesson_row is not None
+    assert module_row["mastery_state"] == "not_started"
+    assert lesson_row["mastery_state"] == "not_started"
+    assert lesson_row["retry_count"] == 0
+    assert lesson_row["error_count"] == 0
+    assert lesson_row["retry_priority"] == 0
+
+    module_metadata = json.loads(module_row["notes"].split("\n", 1)[1])
+    lesson_metadata = json.loads(lesson_row["description"].split("\n", 1)[1])
+    assert module_metadata["module"]["estimated_effort_band"] == "light"
+    assert module_metadata["module"]["current_mastery_state"] == "not_started"
+    assert lesson_metadata["mastery_state"] == "not_started"
+    assert lesson_metadata["retry_metadata"]["retry_count"] == 0
 
 
 async def test_missing_asset_file_produces_warning(

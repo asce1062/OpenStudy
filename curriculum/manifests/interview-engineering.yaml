@@ -7,7 +7,6 @@ meta:
   owner: Alex Mbugua
   format: openstudy-curriculum-manifest
   status: draft
-  estimated_total_hours: 238
   attribution_note: 'This manifest is an original study plan that references local source repositories by path and heading.
     It intentionally avoids copying large portions of upstream content.
 
@@ -49,7 +48,6 @@ tracks:
     difficulty:
       level: beginner
       score: 1
-    estimated_hours: 10
     tags:
     - planning
     - study-skills
@@ -144,7 +142,7 @@ tracks:
         path: README.md
         heading: The Daily Plan
       estimated_minutes: 90
-      completion_criteria: Publish a weekly schedule with reading, implementation, review, and mock interview blocks.
+      completion_criteria: Define flexible availability windows for reading, implementation, review, and mock interview work.
       suggested_order: 5
       depends_on:
       - icc-learn-notebook-structure
@@ -180,7 +178,6 @@ tracks:
     difficulty:
       level: beginner
       score: 1
-    estimated_hours: 13
     tags:
     - big-o
     - complexity
@@ -312,7 +309,6 @@ tracks:
     difficulty:
       level: beginner
       score: 1
-    estimated_hours: 20
     tags:
     - arrays
     - strings
@@ -481,7 +477,6 @@ tracks:
     difficulty:
       level: beginner
       score: 2
-    estimated_hours: 19
     tags:
     - linked-lists
     - stacks
@@ -647,7 +642,6 @@ tracks:
     difficulty:
       level: intermediate
       score: 3
-    estimated_hours: 25
     tags:
     - recursion
     - dynamic-programming
@@ -832,7 +826,6 @@ tracks:
     difficulty:
       level: intermediate
       score: 3
-    estimated_hours: 28
     tags:
     - trees
     - binary-search-trees
@@ -1040,7 +1033,6 @@ tracks:
     difficulty:
       level: intermediate
       score: 4
-    estimated_hours: 19
     tags:
     - sorting
     - searching
@@ -1224,7 +1216,6 @@ tracks:
     difficulty:
       level: intermediate
       score: 4
-    estimated_hours: 20
     tags:
     - practice
     - testing
@@ -1350,7 +1341,7 @@ tracks:
         score: 4
       cognitive_load: medium
     - id: ie-weekly-error-log
-      title: Maintain a weekly error log
+      title: Maintain an adaptive error log
       type:
         category: checkpoint
         medium: manifest
@@ -1379,7 +1370,6 @@ tracks:
     difficulty:
       level: intermediate
       score: 5
-    estimated_hours: 17
     tags:
     - system-design
     - scalability
@@ -1551,7 +1541,6 @@ tracks:
     difficulty:
       level: advanced
       score: 6
-    estimated_hours: 20
     tags:
     - distributed-systems
     - consistency
@@ -1742,7 +1731,6 @@ tracks:
     difficulty:
       level: advanced
       score: 7
-    estimated_hours: 21
     tags:
     - databases
     - sql
@@ -1935,7 +1923,6 @@ tracks:
     difficulty:
       level: advanced
       score: 7
-    estimated_hours: 27
     tags:
     - system-design
     - mock-interviews
@@ -2119,7 +2106,6 @@ tracks:
     difficulty:
       level: advanced
       score: 8
-    estimated_hours: 19
     tags:
     - review
     - mock-interviews

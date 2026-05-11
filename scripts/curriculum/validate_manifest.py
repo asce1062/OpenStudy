@@ -51,6 +51,7 @@ META_KEYS = {
     "format",
     "status",
     "estimated_total_hours",
+    "effort_model",
     "attribution_note",
     "schema_version",
     "id_policy",
@@ -66,12 +67,19 @@ MODULE_KEYS = {
     "description",
     "difficulty",
     "estimated_hours",
+    "estimated_effort_band",
+    "expected_retry_density",
+    "cognitive_load",
+    "decay_risk",
+    "interview_frequency",
+    "current_mastery_state",
     "tags",
     "prerequisites",
     "depends_on",
     "suggested_order",
     "lessons",
 }
+MODULE_REQUIRED_KEYS = MODULE_KEYS - {"estimated_hours"}
 LESSON_REQUIRED_KEYS = {
     "id",
     "title",
@@ -84,7 +92,7 @@ LESSON_REQUIRED_KEYS = {
     "difficulty",
     "cognitive_load",
 }
-LESSON_KEYS = LESSON_REQUIRED_KEYS | {"inferred"}
+LESSON_KEYS = LESSON_REQUIRED_KEYS | {"inferred", "mastery_state", "retry_metadata"}
 LESSON_TYPE_KEYS = {"category", "medium", "interaction"}
 DIFFICULTY_KEYS = {"level", "score"}
 SOURCE_REF_KEYS = {"repo", "path", "heading"}
@@ -780,7 +788,7 @@ def validate_module(
     manifest_path: Path,
     options: ValidationOptions,
 ) -> None:
-    add_missing_key_errors(issues, module, MODULE_KEYS, module_path, "modules")
+    add_missing_key_errors(issues, module, MODULE_REQUIRED_KEYS, module_path, "modules")
     warn_extra_keys(issues, module, MODULE_KEYS, module_path, "schema-hygiene")
     for key in ("name", "description"):
         check_required_text(issues, module, key, module_path, "modules")
@@ -1228,7 +1236,9 @@ def print_summary(manifest_path: Path, result: ValidationResult) -> None:
     print(f"Projects: {result.stats.projects}")
     print(f"Checkpoints: {result.stats.checkpoints}")
     print(
-        f"Estimated effort: {result.stats.estimated_hours:.1f} hours ({result.stats.estimated_minutes} minutes)"
+        "Lesson inventory: "
+        f"{result.stats.estimated_minutes} minutes across source atoms "
+        "(agenda uses elastic effort bands for daily planning)"
     )
     print(f"Errors: {len(errors)}")
     print(f"Warnings: {len(warnings)}")

@@ -1,8 +1,8 @@
-"""Deterministic daily agenda generation.
+"""Adaptive daily agenda generation.
 
-The agenda engine is intentionally explainable: it gathers existing OpenStudy
-state, builds candidate actions with fixed scores, and returns the highest
-value 4-6 items in a stable category order. It does not call an LLM.
+The agenda engine is intentionally explainable: it gathers learner state,
+builds candidate actions from retry/review/mastery evidence, and returns the
+highest value 4-6 items in a stable category order. It does not call an LLM.
 """
 from __future__ import annotations
 
@@ -26,6 +26,7 @@ from ..schemas import (
     StudyTopic,
     StudyTopicPatch,
     Task,
+    TaskPatch,
 )
 from . import (
     courses as courses_svc,
@@ -101,10 +102,18 @@ def _agenda_item(
     course_code: str | None,
     reason: str,
     estimated_minutes: int,
+    duration_range: tuple[int, int] | None = None,
+    objective: str | None = None,
+    mastery_phase: str | None = None,
+    source_label: str | None = None,
+    completion_criteria: str | None = None,
+    confidence_target: int | None = None,
+    retry_behavior: str | None = None,
     priority: int,
     source_ref: dict[str, Any],
 ) -> AgendaItem:
     source_key = str(source_ref.get("id") or source_ref.get("path") or title)
+    min_minutes, max_minutes = duration_range or (estimated_minutes, estimated_minutes)
     return AgendaItem(
         id=f"agenda-{target_date.isoformat()}-{kind}-{_slug(source_key)}",
         kind=kind,
@@ -112,6 +121,14 @@ def _agenda_item(
         course_code=course_code,
         reason=reason,
         estimated_minutes=estimated_minutes,
+        duration_min_minutes=min_minutes,
+        duration_max_minutes=max_minutes,
+        objective=objective or title,
+        mastery_phase=mastery_phase,  # type: ignore[arg-type]
+        source_label=source_label,
+        completion_criteria=completion_criteria or "Complete the selected agenda item.",
+        confidence_target=confidence_target,
+        retry_behavior=retry_behavior or "If failed or low confidence, log the result so the agenda can retry it.",
         priority=max(1, min(100, priority)),
         source_ref=source_ref,
     )
@@ -199,6 +216,174 @@ def _priority_weight(value: str | None) -> int:
     }.get(value or "med", 4)
 
 
+def _due_for_review(value: datetime | None, target_date: date) -> bool:
+    if value is None:
+        return False
+    return _as_utc(value).date() <= target_date
+
+
+def _mastery_state(item: StudyTopic | Task) -> str:
+    return getattr(item, "mastery_state", None) or getattr(item, "status", None) or "not_started"
+
+
+def _confidence(item: StudyTopic | Task) -> int | None:
+    return getattr(item, "confidence", None) or getattr(item, "last_confidence", None)
+
+
+def _low_confidence(item: StudyTopic | Task) -> bool:
+    confidence = _confidence(item)
+    return confidence is not None and confidence <= 1
+
+
+def _duration_for_phase(phase: str, target_date: date) -> tuple[int, int]:
+    if phase in {"retry_stabilization", "retention_verification"}:
+        return (45, 90)
+    if phase in {"timed_execution", "independent_practice"}:
+        return (90, 150)
+    if target_date.isoweekday() == 6:
+        return (180, 300)
+    return (45, 90)
+
+
+def _source_ref_for_item(item: StudyTopic | Task) -> dict[str, Any]:
+    if isinstance(item, StudyTopic):
+        return {
+            "type": "study_topic",
+            "id": item.id,
+            "status": item.status,
+            "mastery_state": _mastery_state(item),
+        }
+    return {
+        "type": "task",
+        "id": item.id,
+        "status": item.status,
+        "mastery_state": _mastery_state(item),
+    }
+
+
+def _mastery_patch_for_result(
+    *,
+    item_kind: str,
+    confidence: int | None,
+    error_count: int | None,
+    prior_retry_count: int,
+    target_date: date | None,
+) -> tuple[str, str, datetime | None, int, int]:
+    now = datetime.now(timezone.utc)
+    confidence_value = confidence if confidence is not None else 3
+    error_value = error_count if error_count is not None else 0
+    base_date = target_date or now.date()
+    if confidence_value <= 1:
+        return (
+            "struggling",
+            "struggling",
+            datetime.combine(base_date + timedelta(days=1), time(9), tzinfo=timezone.utc),
+            prior_retry_count + 1,
+            9,
+        )
+    if confidence_value == 2:
+        return (
+            "in_progress",
+            "guided_practice",
+            datetime.combine(base_date + timedelta(days=1), time(9), tzinfo=timezone.utc),
+            prior_retry_count + 1,
+            6,
+        )
+    if confidence_value == 3:
+        return (
+            "in_progress",
+            "independent_practice",
+            datetime.combine(base_date + timedelta(days=2), time(9), tzinfo=timezone.utc),
+            prior_retry_count + int(error_value > 0),
+            4 if error_value > 0 else 0,
+        )
+    if confidence_value == 4:
+        return (
+            "studied",
+            "timed_execution",
+            datetime.combine(base_date + timedelta(days=3), time(9), tzinfo=timezone.utc),
+            prior_retry_count,
+            0,
+        )
+    if item_kind == "retention_check" and error_value <= 1:
+        return ("mastered", "mastered", None, prior_retry_count, 0)
+    if error_value <= 1:
+        return (
+            "studied",
+            "retention_verification",
+            datetime.combine(base_date + timedelta(days=3), time(9), tzinfo=timezone.utc),
+            prior_retry_count,
+            0,
+        )
+    return (
+        "in_progress",
+        "retry_stabilization",
+        datetime.combine(base_date + timedelta(days=1), time(9), tzinfo=timezone.utc),
+        prior_retry_count + 1,
+        7,
+    )
+
+
+def _retry_candidate(
+    *,
+    target_date: date,
+    topics: list[StudyTopic],
+    tasks: list[Task],
+) -> _Candidate | None:
+    candidates: list[StudyTopic | Task] = [
+        item
+        for item in [*topics, *tasks]
+        if (
+            _mastery_state(item) == "retry_stabilization"
+            or getattr(item, "retry_priority", 0) > 0
+            or getattr(item, "retry_count", 0) > 0
+        )
+        and (
+            _due_for_review(getattr(item, "next_review_at", None), target_date)
+            or getattr(item, "retry_priority", 0) > 0
+        )
+        and getattr(item, "status", None) not in {"done", "skipped", "mastered"}
+    ]
+    if not candidates:
+        return None
+    item = sorted(
+        candidates,
+        key=lambda value: (
+            -getattr(value, "retry_priority", 0),
+            getattr(value, "next_review_at", None) or datetime.min.replace(tzinfo=timezone.utc),
+            -getattr(value, "error_count", 0),
+            getattr(value, "sort_order", 0),
+            getattr(value, "name", getattr(value, "title", "")).lower(),
+        ),
+    )[0]
+    phase = _mastery_state(item)
+    min_minutes, max_minutes = _duration_for_phase(phase, target_date)
+    title_value = getattr(item, "name", getattr(item, "title", "item"))
+    return _Candidate(
+        item=_agenda_item(
+            target_date=target_date,
+            kind="retry",
+            title=f"Retry {title_value}",
+            course_code=item.course_code,
+            reason=(
+                "Overdue retry work is first-class: previous attempts still have "
+                f"{getattr(item, 'error_count', 0)} error(s) or pending stabilization."
+            ),
+            estimated_minutes=min_minutes,
+            duration_range=(min_minutes, max_minutes),
+            objective=f"Stabilize {title_value} before introducing unrelated new material.",
+            mastery_phase=phase,
+            source_label=title_value,
+            completion_criteria="Complete the retry, record errors, and reach the confidence target.",
+            confidence_target=4,
+            retry_behavior="If confidence stays below 4 or errors remain, keep it in retry stabilization.",
+            priority=98 + getattr(item, "retry_priority", 0),
+            source_ref=_source_ref_for_item(item),
+        ),
+        category_order=1,
+    )
+
+
 def _urgent_work_candidate(
     *,
     target_date: date,
@@ -268,36 +453,58 @@ def _struggling_candidate(
     *,
     target_date: date,
     topics: list[StudyTopic],
+    tasks: list[Task] | None = None,
 ) -> _Candidate | None:
-    struggling = [
+    task_items = tasks or []
+    struggling: list[StudyTopic | Task] = [
         topic
         for topic in topics
-        if topic.status == "struggling" or (topic.confidence is not None and topic.confidence <= 1)
+        if topic.status == "struggling"
+        or _mastery_state(topic) == "struggling"
+        or _low_confidence(topic)
     ]
+    struggling.extend(
+        task
+        for task in task_items
+        if task.status != "done"
+        and (
+            _mastery_state(task) == "struggling"
+            or _low_confidence(task)
+        )
+    )
     if not struggling:
         return None
-    topic = sorted(
+    item = sorted(
         struggling,
         key=lambda item: (
             item.course_code,
-            item.sort_order,
-            item.name.lower(),
+            getattr(item, "sort_order", 0),
+            getattr(item, "name", getattr(item, "title", "")).lower(),
             item.id,
         ),
     )[0]
-    confidence = topic.confidence if topic.confidence is not None else 1
+    title_value = getattr(item, "name", getattr(item, "title", "item"))
+    confidence = _confidence(item)
+    confidence = confidence if confidence is not None else 1
     return _Candidate(
         item=_agenda_item(
             target_date=target_date,
             kind="struggling_topic",
-            title=f"Retry {topic.name}",
-            course_code=topic.course_code,
+            title=f"Retry {title_value}",
+            course_code=item.course_code,
             reason=f"Marked struggling with confidence {confidence}; retry before adding more surface area.",
             estimated_minutes=35,
+            duration_range=(45, 90),
+            objective=f"Rebuild {title_value} with guided examples and error analysis.",
+            mastery_phase="struggling",
+            source_label=title_value,
+            completion_criteria="Identify the failure reason, complete one guided retry, and log confidence.",
+            confidence_target=3,
+            retry_behavior="If confidence is 0-1, keep it struggling; if 2, move to guided practice.",
             priority=88 + max(0, 2 - confidence),
-            source_ref={"type": "study_topic", "id": topic.id, "status": topic.status},
+            source_ref=_source_ref_for_item(item),
         ),
-        category_order=1,
+        category_order=2,
     )
 
 
@@ -340,6 +547,13 @@ def _review_candidate(
                     "unfinished before upcoming course work."
                 ),
                 estimated_minutes=30,
+                duration_range=(45, 90),
+                objective=f"Recover unfinished understanding for {topic.name}.",
+                mastery_phase=_mastery_state(topic),
+                source_label=topic.name,
+                completion_criteria="Review the topic and record the next confidence score.",
+                confidence_target=3,
+                retry_behavior="If errors remain, schedule retry stabilization instead of new exposure.",
                 priority=priority,
                 source_ref={
                     "type": "fall_behind",
@@ -347,10 +561,52 @@ def _review_candidate(
                     "topic_id": topic.id,
                 },
             ),
-            category_order=2,
+            category_order=3,
         )
 
-    studied = [topic for topic in topics if topic.status in {"studied", "mastered"}]
+    due_retention = [
+        topic
+        for topic in topics
+        if _mastery_state(topic) == "retention_verification"
+        and _due_for_review(topic.next_review_at, target_date)
+    ]
+    if due_retention:
+        topic = sorted(
+            due_retention,
+            key=lambda item: (
+                item.next_review_at or datetime.min.replace(tzinfo=timezone.utc),
+                item.course_code,
+                item.sort_order,
+                item.name.lower(),
+            ),
+        )[0]
+        return _Candidate(
+            item=_agenda_item(
+                target_date=target_date,
+                kind="retention_check",
+                title=f"Retention check: {topic.name}",
+                course_code=topic.course_code,
+                reason="Delayed retention check is due before this unit can be mastered.",
+                estimated_minutes=45,
+                duration_range=(45, 90),
+                objective=f"Verify {topic.name} after a delay without relying on fresh memory.",
+                mastery_phase="retention_verification",
+                source_label=topic.name,
+                completion_criteria="Pass delayed retention with confidence 5 and low error count.",
+                confidence_target=5,
+                retry_behavior="If failed, move the unit back to retry stabilization with a new review date.",
+                priority=86,
+                source_ref=_source_ref_for_item(topic),
+            ),
+            category_order=3,
+        )
+
+    studied = [
+        topic
+        for topic in topics
+        if topic.status in {"studied", "mastered"}
+        or _mastery_state(topic) == "mastered"
+    ]
     if not studied:
         return None
     topic = sorted(
@@ -370,10 +626,64 @@ def _review_candidate(
             course_code=topic.course_code,
             reason="Previously studied topic is ready for a spaced review pass.",
             estimated_minutes=20,
+            duration_range=(45, 90),
+            objective=f"Refresh {topic.name} before decay becomes visible.",
+            mastery_phase=_mastery_state(topic),
+            source_label=topic.name,
+            completion_criteria="Complete a spaced review pass and update confidence.",
+            confidence_target=4,
+            retry_behavior="If confidence drops below 4, schedule guided or independent practice.",
             priority=62,
             source_ref={"type": "study_topic", "id": topic.id, "status": topic.status},
         ),
-        category_order=2,
+        category_order=3,
+    )
+
+
+def _mastery_progression_candidate(
+    *,
+    target_date: date,
+    topics: list[StudyTopic],
+) -> _Candidate | None:
+    candidates = [
+        topic
+        for topic in topics
+        if _mastery_state(topic)
+        in {"exposure", "understanding", "guided_practice", "independent_practice", "timed_execution"}
+        and topic.status not in {"mastered", "struggling"}
+    ]
+    if not candidates:
+        return None
+    topic = sorted(
+        candidates,
+        key=lambda item: (
+            -(_confidence(item) or 0),
+            item.sort_order,
+            item.name.lower(),
+            item.id,
+        ),
+    )[0]
+    phase = _mastery_state(topic)
+    min_minutes, max_minutes = _duration_for_phase(phase, target_date)
+    return _Candidate(
+        item=_agenda_item(
+            target_date=target_date,
+            kind="mastery_progression",
+            title=f"Advance {topic.name}",
+            course_code=topic.course_code,
+            reason=f"Active mastery unit is in {phase}; advance it before adding new exposure.",
+            estimated_minutes=min_minutes,
+            duration_range=(min_minutes, max_minutes),
+            objective=f"Move {topic.name} to the next mastery phase using current evidence.",
+            mastery_phase=phase,
+            source_label=topic.name,
+            completion_criteria="Meet the confidence gate and log timing/errors for the next phase decision.",
+            confidence_target=4 if phase in {"independent_practice", "timed_execution"} else 3,
+            retry_behavior="If confidence or timing is weak, keep the unit active and retry before new lessons.",
+            priority=76,
+            source_ref=_source_ref_for_item(topic),
+        ),
+        category_order=4,
     )
 
 
@@ -381,7 +691,45 @@ def _new_concept_candidate(
     *,
     target_date: date,
     topics: list[StudyTopic],
+    tasks: list[Task] | None = None,
 ) -> _Candidate | None:
+    task_candidates = [
+        task
+        for task in (tasks or [])
+        if task.status == "open"
+        and _mastery_state(task) in {"not_started", "exposure"}
+        and task.tags
+        and "curriculum" in task.tags
+    ]
+    if task_candidates:
+        task = sorted(
+            task_candidates,
+            key=lambda item: (
+                item.course_code or "",
+                item.title.lower(),
+                item.id,
+            ),
+        )[0]
+        return _Candidate(
+            item=_agenda_item(
+                target_date=target_date,
+                kind="new_exposure",
+                title=f"Expose: {task.title}",
+                course_code=task.course_code,
+                reason="New exposure is allowed because higher-priority retry, struggling, review, and active unit work have capacity.",
+                estimated_minutes=45,
+                duration_range=(45, 90),
+                objective=f"Get first exposure to {task.title} without marking it complete prematurely.",
+                mastery_phase="exposure",
+                source_label=task.title,
+                completion_criteria="Record whether the idea is only exposed or ready for guided practice.",
+                confidence_target=2,
+                retry_behavior="If confidence is 0-1, log it as struggling and schedule retry work.",
+                priority=54,
+                source_ref=_source_ref_for_item(task),
+            ),
+            category_order=6,
+        )
     candidates = [topic for topic in topics if topic.status == "not_started"]
     if not candidates:
         return None
@@ -403,10 +751,17 @@ def _new_concept_candidate(
             course_code=topic.course_code,
             reason="Next not-started concept in the course sequence.",
             estimated_minutes=45,
+            duration_range=(45, 90),
+            objective=f"Start exposure for {topic.name}.",
+            mastery_phase="exposure",
+            source_label=topic.name,
+            completion_criteria="Complete first exposure and record confidence; do not mark mastered.",
+            confidence_target=2,
+            retry_behavior="If confidence is 0-1, convert to struggling retry work.",
             priority=55,
             source_ref={"type": "study_topic", "id": topic.id, "status": topic.status},
         ),
-        category_order=3,
+        category_order=6,
     )
 
 
@@ -440,10 +795,17 @@ def _timed_exercise_candidate(
                 course_code=exam.course_code,
                 reason="Upcoming exam is scheduled; add timed retrieval practice.",
                 estimated_minutes=40,
+                duration_range=(90, 150),
+                objective=f"Practice timed execution for {exam.course_code}.",
+                mastery_phase="timed_execution",
+                source_label=exam.course_code,
+                completion_criteria="Finish the timed drill and record completion count, errors, and confidence.",
+                confidence_target=4,
+                retry_behavior="If timing or errors miss the target, schedule retry stabilization.",
                 priority=70,
                 source_ref={"type": "exam", "id": exam.course_code},
             ),
-            category_order=4,
+            category_order=5,
         )
 
     course_codes = {topic.course_code for topic in topics} or {course.code for course in courses}
@@ -458,10 +820,17 @@ def _timed_exercise_candidate(
             course_code=course_code,
             reason="Timed execution keeps interview and exam practice honest.",
             estimated_minutes=30,
+            duration_range=_duration_for_phase("timed_execution", target_date),
+            objective=f"Maintain timed interview execution for {course_code}.",
+            mastery_phase="timed_execution",
+            source_label=course_code,
+            completion_criteria="Log duration, completed count, total count, errors, and confidence.",
+            confidence_target=4,
+            retry_behavior="If performance is weak, convert the weak unit into retry stabilization.",
             priority=48,
             source_ref={"type": "agenda_synthesis", "id": f"timed-{course_code}"},
         ),
-        category_order=4,
+        category_order=5,
     )
 
 
@@ -480,10 +849,17 @@ async def _flashcard_candidate(target_date: date, course_code: str | None) -> _C
             course_code="IE",
             reason=f"{len(files)} flashcard asset(s) are visible in the course files browser.",
             estimated_minutes=20,
+            duration_range=(45, 90),
+            objective="Refresh Interview Engineering memory assets.",
+            mastery_phase="retention_verification",
+            source_label="Interview Engineering flashcards",
+            completion_criteria="Review active cards and log stale or failed prompts.",
+            confidence_target=4,
+            retry_behavior="Turn missed cards into retry work instead of optional review.",
             priority=58,
             source_ref={"type": "course_files", "path": FLASHCARD_PREFIX},
         ),
-        category_order=5,
+        category_order=7,
     )
 
 
@@ -619,19 +995,21 @@ async def generate_daily_agenda(
             tasks=tasks,
             deliverables=deliverables,
         ),
-        _struggling_candidate(target_date=target_date, topics=topics),
+        _retry_candidate(target_date=target_date, topics=topics, tasks=tasks),
+        _struggling_candidate(target_date=target_date, topics=topics, tasks=tasks),
         _review_candidate(
             target_date=target_date,
             fall_behind=fall_behind,
             topics=topics,
         ),
-        _new_concept_candidate(target_date=target_date, topics=topics),
+        _mastery_progression_candidate(target_date=target_date, topics=topics),
         _timed_exercise_candidate(
             target_date=target_date,
             courses=filtered_courses,
             exams=exams,
             topics=topics,
         ),
+        _new_concept_candidate(target_date=target_date, topics=topics, tasks=tasks),
         await _flashcard_candidate(target_date, normalized_course),
     ):
         if candidate is not None:
@@ -732,28 +1110,109 @@ async def apply_agenda_result_to_source(
     if source_type == "study_topic":
         topic_id = source_ref.get("id")
         if isinstance(topic_id, str):
+            topic = next(
+                (item for item in await topics_svc.list_study_topics() if item.id == topic_id),
+                None,
+            )
+            retry_count = topic.retry_count if topic is not None else 0
+            status, mastery_state, next_review_at, next_retry_count, retry_priority = (
+                _mastery_patch_for_result(
+                    item_kind="retention_check"
+                    if source_ref.get("mastery_state") == "retention_verification"
+                    else item_kind,
+                    confidence=request.confidence,
+                    error_count=request.error_count,
+                    prior_retry_count=retry_count,
+                    target_date=parse_agenda_item_date(agenda_item_id),
+                )
+            )
             await topics_svc.update_study_topic(
                 topic_id,
-                StudyTopicPatch(status="studied", confidence=request.confidence),
+                StudyTopicPatch(
+                    status=status,  # type: ignore[arg-type]
+                    confidence=request.confidence,
+                    mastery_state=mastery_state,  # type: ignore[arg-type]
+                    retry_count=next_retry_count,
+                    last_attempted_at=datetime.now(timezone.utc),
+                    last_completed_at=datetime.now(timezone.utc),
+                    last_reviewed_at=datetime.now(timezone.utc),
+                    next_review_at=next_review_at,
+                    last_confidence=request.confidence,
+                    error_count=request.error_count or 0,
+                    failure_reason=request.notes if (request.error_count or 0) > 0 else None,
+                    retry_priority=retry_priority,
+                ),
             )
-            mutations.append("study_topic:studied")
+            mutations.append("study_topic:mastery_state")
+            if status in {"studied", "mastered"}:
+                mutations.append(f"study_topic:{status}")
             if request.confidence is not None:
                 mutations.append("study_topic:confidence")
     elif source_type == "fall_behind":
         topic_id = source_ref.get("topic_id")
         if isinstance(topic_id, str):
+            topic = next(
+                (item for item in await topics_svc.list_study_topics() if item.id == topic_id),
+                None,
+            )
+            retry_count = topic.retry_count if topic is not None else 0
+            status, mastery_state, next_review_at, next_retry_count, retry_priority = (
+                _mastery_patch_for_result(
+                    item_kind="retention_check"
+                    if source_ref.get("mastery_state") == "retention_verification"
+                    else item_kind,
+                    confidence=request.confidence,
+                    error_count=request.error_count,
+                    prior_retry_count=retry_count,
+                    target_date=parse_agenda_item_date(agenda_item_id),
+                )
+            )
             await topics_svc.update_study_topic(
                 topic_id,
-                StudyTopicPatch(status="studied", confidence=request.confidence),
+                StudyTopicPatch(
+                    status=status,  # type: ignore[arg-type]
+                    confidence=request.confidence,
+                    mastery_state=mastery_state,  # type: ignore[arg-type]
+                    retry_count=next_retry_count,
+                    last_attempted_at=datetime.now(timezone.utc),
+                    last_completed_at=datetime.now(timezone.utc),
+                    last_reviewed_at=datetime.now(timezone.utc),
+                    next_review_at=next_review_at,
+                    last_confidence=request.confidence,
+                    error_count=request.error_count or 0,
+                    failure_reason=request.notes if (request.error_count or 0) > 0 else None,
+                    retry_priority=retry_priority,
+                ),
             )
-            mutations.append("study_topic:studied")
+            mutations.append("study_topic:mastery_state")
+            if status in {"studied", "mastered"}:
+                mutations.append(f"study_topic:{status}")
             if request.confidence is not None:
                 mutations.append("study_topic:confidence")
     elif source_type == "task":
         task_id = source_ref.get("id")
         if isinstance(task_id, str):
-            await tasks_svc.complete_task(task_id)
-            mutations.append("task:done")
+            if source_ref.get("mastery_state") or item_kind in {"new_exposure", "retry"}:
+                await tasks_svc.update_task(
+                    task_id,
+                    TaskPatch(
+                        mastery_state=_mastery_patch_for_result(
+                            item_kind=item_kind,
+                            confidence=request.confidence,
+                            error_count=request.error_count,
+                            prior_retry_count=0,
+                            target_date=parse_agenda_item_date(agenda_item_id),
+                        )[1],  # type: ignore[arg-type]
+                        last_attempted_at=datetime.now(timezone.utc),
+                        last_completed_at=datetime.now(timezone.utc),
+                        last_confidence=request.confidence,
+                        error_count=request.error_count or 0,
+                    ),
+                )
+                mutations.append("task:mastery_state")
+            else:
+                await tasks_svc.complete_task(task_id)
+                mutations.append("task:done")
     elif source_type in {"deliverable", "course_files", "agenda_synthesis", "exam"}:
         return []
     else:
