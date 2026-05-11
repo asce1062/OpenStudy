@@ -17,6 +17,7 @@ Postgres container is reachable at hostname `postgres` (the internal
 docker service name). Override with `PGHOST` / `PGPORT` if running outside
 the default compose network.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -24,6 +25,7 @@ import os
 import sys
 import time
 from pathlib import Path
+from typing import Any, cast
 
 import psycopg
 
@@ -114,7 +116,6 @@ def _strip_outer_transaction(sql: str) -> str:
 
     # Track $$-quoted regions so we don't touch plpgsql block syntax inside them.
     in_dollar = False
-    dollar_tag = ""
 
     # First pass: find indices of leading BEGIN and trailing COMMIT (only when
     # at outermost level, only at file boundaries).
@@ -191,7 +192,7 @@ def apply(conn: psycopg.Connection, sql_file: Path) -> None:
     sql = _strip_psql_meta_commands(sql)
     print(f"  applying {sql_file.name} ({len(raw_sql)} bytes, sha {sha[:12]})...")
     with conn.transaction():
-        conn.execute(sql)
+        conn.execute(cast(Any, sql))
         conn.execute(
             "INSERT INTO public._migrations (filename, checksum) VALUES (%s, %s)",
             (sql_file.name, sha),

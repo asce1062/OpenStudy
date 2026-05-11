@@ -8,11 +8,12 @@ Services and routers should always go through these helpers; opening
 connections by hand defeats the pool. For raw work that needs a transaction
 or cursor-level control, `async with db() as conn:` checks one out.
 """
+
 from __future__ import annotations
 
 import os
 from contextlib import asynccontextmanager
-from typing import Any
+from typing import Any, cast
 
 import uuid as _uuid
 
@@ -61,6 +62,8 @@ class _StrUUIDLoaderBinary(Loader):
 
     def load(self, data):
         if isinstance(data, memoryview):
+            data = bytes(data)
+        if isinstance(data, bytearray):
             data = bytes(data)
         return str(_uuid.UUID(bytes=data))
 
@@ -132,25 +135,26 @@ async def db():
 
 # ── helper API ────────────────────────────────────────────────────────────────
 
+
 async def fetch(sql: str, *args: Any) -> list[dict[str, Any]]:
     """SELECT returning multiple rows. Returns list of dicts."""
     async with db() as conn, conn.cursor() as cur:
-        await cur.execute(sql, args or None)
-        return await cur.fetchall()
+        await cur.execute(cast(Any, sql), args or None)
+        return cast(list[dict[str, Any]], await cur.fetchall())
 
 
 async def fetchrow(sql: str, *args: Any) -> dict[str, Any] | None:
     """SELECT returning one row (or None). Returns dict or None."""
     async with db() as conn, conn.cursor() as cur:
-        await cur.execute(sql, args or None)
-        return await cur.fetchone()
+        await cur.execute(cast(Any, sql), args or None)
+        return cast(dict[str, Any] | None, await cur.fetchone())
 
 
 async def fetchval(sql: str, *args: Any) -> Any:
     """SELECT returning one scalar (or None). Returns the first column of the first row."""
     async with db() as conn, conn.cursor() as cur:
-        await cur.execute(sql, args or None)
-        row = await cur.fetchone()
+        await cur.execute(cast(Any, sql), args or None)
+        row = cast(dict[str, Any] | None, await cur.fetchone())
         if row is None:
             return None
         # row is a dict (dict_row factory) — return its first value
@@ -160,5 +164,5 @@ async def fetchval(sql: str, *args: Any) -> Any:
 async def execute(sql: str, *args: Any) -> int:
     """INSERT/UPDATE/DELETE. Returns affected row count."""
     async with db() as conn, conn.cursor() as cur:
-        await cur.execute(sql, args or None)
+        await cur.execute(cast(Any, sql), args or None)
         return cur.rowcount

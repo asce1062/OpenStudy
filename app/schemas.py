@@ -58,8 +58,31 @@ DeliverableKind = Annotated[
     BeforeValidator(_normalize(_DELIVERABLE_KIND_ALIASES)),
 ]
 
+MasteryState = Literal[
+    "not_started",
+    "exposure",
+    "understanding",
+    "guided_practice",
+    "independent_practice",
+    "timed_execution",
+    "retry_stabilization",
+    "retention_verification",
+    "mastered",
+    "struggling",
+]
 StudyTopicStatus = Literal[
-    "not_started", "in_progress", "studied", "mastered", "struggling"
+    "not_started",
+    "in_progress",
+    "studied",
+    "mastered",
+    "struggling",
+    "exposure",
+    "understanding",
+    "guided_practice",
+    "independent_practice",
+    "timed_execution",
+    "retry_stabilization",
+    "retention_verification",
 ]
 DeliverableStatus = Literal[
     "open", "in_progress", "submitted", "graded", "skipped"
@@ -215,6 +238,16 @@ class StudyTopicCreate(BaseModel):
     lecture_id: Optional[str] = None
     status: StudyTopicStatus = "not_started"
     confidence: Optional[int] = Field(default=None, ge=0, le=5)
+    mastery_state: Optional[MasteryState] = "not_started"
+    retry_count: int = Field(default=0, ge=0)
+    last_attempted_at: Optional[datetime] = None
+    last_completed_at: Optional[datetime] = None
+    next_review_at: Optional[datetime] = None
+    last_confidence: Optional[int] = Field(default=None, ge=0, le=5)
+    error_count: int = Field(default=0, ge=0)
+    failure_reason: Optional[str] = None
+    struggle_tags: Optional[List[str]] = None
+    retry_priority: int = Field(default=0, ge=0)
     notes: Optional[str] = None
     sort_order: int = 0
 
@@ -228,6 +261,17 @@ class StudyTopicPatch(BaseModel):
     lecture_id: Optional[str] = None
     status: Optional[StudyTopicStatus] = None
     confidence: Optional[int] = Field(default=None, ge=0, le=5)
+    mastery_state: Optional[MasteryState] = None
+    retry_count: Optional[int] = Field(default=None, ge=0)
+    last_attempted_at: Optional[datetime] = None
+    last_completed_at: Optional[datetime] = None
+    last_reviewed_at: Optional[datetime] = None
+    next_review_at: Optional[datetime] = None
+    last_confidence: Optional[int] = Field(default=None, ge=0, le=5)
+    error_count: Optional[int] = Field(default=None, ge=0)
+    failure_reason: Optional[str] = None
+    struggle_tags: Optional[List[str]] = None
+    retry_priority: Optional[int] = Field(default=None, ge=0)
     notes: Optional[str] = None
     sort_order: Optional[int] = None
 
@@ -281,6 +325,17 @@ class TaskCreate(BaseModel):
     status: TaskStatus = "open"
     priority: TaskPriority = "med"
     tags: Optional[List[str]] = None
+    mastery_state: Optional[MasteryState] = "not_started"
+    retry_count: int = Field(default=0, ge=0)
+    last_attempted_at: Optional[datetime] = None
+    last_completed_at: Optional[datetime] = None
+    last_reviewed_at: Optional[datetime] = None
+    next_review_at: Optional[datetime] = None
+    last_confidence: Optional[int] = Field(default=None, ge=0, le=5)
+    error_count: int = Field(default=0, ge=0)
+    failure_reason: Optional[str] = None
+    struggle_tags: Optional[List[str]] = None
+    retry_priority: int = Field(default=0, ge=0)
 
 
 class TaskPatch(BaseModel):
@@ -291,6 +346,17 @@ class TaskPatch(BaseModel):
     status: Optional[TaskStatus] = None
     priority: Optional[TaskPriority] = None
     tags: Optional[List[str]] = None
+    mastery_state: Optional[MasteryState] = None
+    retry_count: Optional[int] = Field(default=None, ge=0)
+    last_attempted_at: Optional[datetime] = None
+    last_completed_at: Optional[datetime] = None
+    last_reviewed_at: Optional[datetime] = None
+    next_review_at: Optional[datetime] = None
+    last_confidence: Optional[int] = Field(default=None, ge=0, le=5)
+    error_count: Optional[int] = Field(default=None, ge=0)
+    failure_reason: Optional[str] = None
+    struggle_tags: Optional[List[str]] = None
+    retry_priority: Optional[int] = Field(default=None, ge=0)
 
 
 class Task(TaskCreate):
@@ -359,6 +425,63 @@ class DashboardSummary(BaseModel):
     study_topics: List[StudyTopic]
     lectures: List[Lecture]
     fall_behind: List[FallBehindItem]
+
+
+# ---------- Agenda ----------
+class AgendaItem(BaseModel):
+    id: str
+    kind: str
+    title: str
+    course_code: Optional[str] = None
+    reason: str
+    estimated_minutes: int
+    duration_min_minutes: int
+    duration_max_minutes: int
+    objective: str
+    mastery_phase: Optional[MasteryState] = None
+    source_label: Optional[str] = None
+    completion_criteria: str
+    confidence_target: Optional[int] = Field(default=None, ge=0, le=5)
+    retry_behavior: str
+    priority: int
+    source_ref: dict[str, Any]
+
+
+class DailyAgenda(BaseModel):
+    date: date
+    course_code: Optional[str] = None
+    items: List[AgendaItem]
+
+
+class AgendaActionRequest(BaseModel):
+    source_ref: Optional[dict[str, Any]] = None
+    reason: Optional[str] = None
+    confidence: Optional[int] = Field(default=None, ge=0, le=5)
+    duration_minutes: Optional[int] = Field(default=None, ge=0)
+    notes: Optional[str] = None
+    error_count: Optional[int] = Field(default=None, ge=0)
+    completed_count: Optional[int] = Field(default=None, ge=0)
+    total_count: Optional[int] = Field(default=None, ge=0)
+    snooze_until: Optional[datetime] = None
+    snooze_minutes: Optional[int] = Field(default=None, ge=1)
+
+
+AgendaOutcome = Literal["completed", "partial", "failed", "skipped", "snoozed"]
+
+
+class AgendaResultRequest(AgendaActionRequest):
+    outcome: AgendaOutcome
+
+
+class AgendaActionResponse(BaseModel):
+    agenda_item_id: str
+    outcome: AgendaOutcome
+    source_ref: dict[str, Any]
+    mutations_applied: List[str]
+    event_id: Optional[str] = None
+    message: str
+    refresh_recommended: bool = True
+    agenda: Optional[DailyAgenda] = None
 
 
 # ---------- Auth ----------

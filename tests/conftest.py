@@ -21,6 +21,7 @@ Architecture (rewritten in Batch C2):
                               call inside service code reaches the same
                               transactioned connection the test sees.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -29,6 +30,7 @@ import subprocess
 import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import Iterator
 
 import pytest
 import pytest_asyncio
@@ -44,7 +46,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
 @pytest.fixture(scope="session")
-def event_loop():
+def event_loop() -> Iterator[asyncio.AbstractEventLoop]:
     # pytest-asyncio default is function-scoped; we need session-scoped
     # so the testcontainer + connection pool survive across tests.
     loop = asyncio.new_event_loop()
@@ -53,7 +55,7 @@ def event_loop():
 
 
 @pytest.fixture(scope="session")
-def pg_url() -> str:
+def pg_url() -> Iterator[str]:
     """Spin up a Postgres testcontainer, apply the baseline schema, return DSN."""
     with PostgresContainer(
         "postgres:16-alpine",
@@ -63,9 +65,7 @@ def pg_url() -> str:
     ) as pg:
         # testcontainers gives us a SQLAlchemy-style URL; psycopg wants the
         # plain `postgresql://` form.
-        dsn = pg.get_connection_url().replace(
-            "postgresql+psycopg2://", "postgresql://"
-        )
+        dsn = pg.get_connection_url().replace("postgresql+psycopg2://", "postgresql://")
         # Apply the baseline migration via run_migrations.py
         env = {
             **os.environ,
@@ -155,7 +155,10 @@ async def client(db_conn, monkeypatch):
     from httpx import ASGITransport, AsyncClient
 
     import app.db as db_module
+    from app.config import get_settings
 
+    monkeypatch.setenv("SESSION_SECRET", "test-session-secret")
+    get_settings.cache_clear()
     monkeypatch.setattr(db_module, "_pool", db_conn)
 
     from app.main import create_app
@@ -164,3 +167,4 @@ async def client(db_conn, monkeypatch):
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
+    get_settings.cache_clear()

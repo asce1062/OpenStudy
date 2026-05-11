@@ -5,6 +5,7 @@ and upserts each file's text into the `file_index` table. Search is exposed
 via a Postgres function (`search_files`) so ranking and snippet generation
 run server-side in one round-trip.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -47,7 +48,7 @@ def _extract_text(path: str, data: bytes) -> str | None:
             return None
         try:
             doc = fitz.open(stream=data, filetype="pdf")
-            chunks = [page.get_text() for page in doc]
+            chunks = [str(page.get_text()) for page in doc]
             doc.close()
             return "\n".join(chunks)
         except Exception as e:
@@ -62,11 +63,15 @@ def _extract_text(path: str, data: bytes) -> str | None:
         try:
             nb = json.loads(data.decode("utf-8", errors="ignore"))
             cells = nb.get("cells", [])
+            if not isinstance(cells, list):
+                return ""
             parts: list[str] = []
             for c in cells:
+                if not isinstance(c, dict):
+                    continue
                 src = c.get("source", "")
                 if isinstance(src, list):
-                    parts.append("".join(src))
+                    parts.append("".join(str(item) for item in src))
                 else:
                     parts.append(str(src))
             return "\n\n".join(parts)
@@ -84,9 +89,7 @@ async def index_all() -> dict[str, Any]:
     # Pull existing rows in one go so we don't make 100 round-trips
     existing: dict[str, str] = {}
     try:
-        rows = await db.fetch(
-            "SELECT path, sha256 FROM file_index LIMIT 10000"
-        )
+        rows = await db.fetch("SELECT path, sha256 FROM file_index LIMIT 10000")
         for row in rows:
             existing[row["path"]] = row.get("sha256") or ""
     except Exception as e:
@@ -172,7 +175,8 @@ async def search(q: str, limit: int = 20) -> list[dict[str, Any]]:
     try:
         return await db.fetch(
             "SELECT * FROM search_files(%s, %s)",
-            q.strip(), limit,
+            q.strip(),
+            limit,
         )
     except Exception as e:
         log.warning("search rpc failed: %s", e)

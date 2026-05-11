@@ -86,7 +86,9 @@ chmod 600 .env .env.docker
 
 The other variables in `.env` are optional and document themselves —
 Telegram bot credentials, the internal API secret used by webhooks, the
-public URL the app advertises in OAuth flows.
+public URL the app advertises in OAuth flows. For public MCP/OAuth clients,
+set `PUBLIC_BASE_URL=https://your-domain.tld` so discovery metadata and
+`WWW-Authenticate` headers never advertise `localhost`.
 
 ---
 
@@ -315,3 +317,7 @@ in a shell, the `$` chars need to be single-quoted.
 The OAuth token cached by the client expired or was revoked. Reconnect:
 in claude.ai disconnect and re-add the connector; in Claude Code run
 `/mcp` and re-authenticate openstudy.
+
+**MCP advertises `localhost` in `WWW-Authenticate`.**
+Set `PUBLIC_BASE_URL=https://your-domain.tld` in the backend environment and
+redeploy. External MCP clients cannot use localhost OAuth discovery URLs.

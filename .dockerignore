@@ -24,7 +24,29 @@ web/.vite/
 .idea/
 docs/
 
-# Env files never go into images — env comes from compose env_file.
+# Curriculum source repos are large; include only runtime flashcard assets.
+curriculum/sources/**
+!curriculum/sources/
+!curriculum/sources/computer-science-flash-cards/
+curriculum/sources/computer-science-flash-cards/**
+!curriculum/sources/computer-science-flash-cards/cards-jwasham.db
+!curriculum/sources/computer-science-flash-cards/cards-jwasham-extreme.db
+!curriculum/sources/interactive-coding-challenges/
+curriculum/sources/interactive-coding-challenges/**
+!curriculum/sources/interactive-coding-challenges/anki_cards/
+curriculum/sources/interactive-coding-challenges/anki_cards/**
+!curriculum/sources/interactive-coding-challenges/anki_cards/Coding.apkg
+!curriculum/sources/system-design-primer/
+curriculum/sources/system-design-primer/**
+!curriculum/sources/system-design-primer/resources/
+curriculum/sources/system-design-primer/resources/**
+!curriculum/sources/system-design-primer/resources/flash_cards/
+curriculum/sources/system-design-primer/resources/flash_cards/**
+!curriculum/sources/system-design-primer/resources/flash_cards/OO Design.apkg
+!curriculum/sources/system-design-primer/resources/flash_cards/System Design.apkg
+!curriculum/sources/system-design-primer/resources/flash_cards/System Design Exercises.apkg
+
+# Env files never go into images — env comes from Compose/Coolify injection.
 .env
 .env.*
 !.env.example

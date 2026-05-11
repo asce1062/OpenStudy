@@ -7,6 +7,9 @@ Coverage: list_course_files, read_course_file, notify_telegram.
 write fixtures to disk directly. `notify_telegram` is sync and HTTP-backed,
 so we monkeypatch `httpx.post` for the success path.
 """
+
+from typing import Any
+
 import pytest
 
 from tests.mcp._harness import get_tool_fn
@@ -47,6 +50,54 @@ async def test_list_course_files_after_upload(client, db_conn, mcp_server, study
     assert entry["type"] == "file"
 
 
+@pytest.mark.asyncio
+async def test_list_course_files_includes_synced_packaged_assets(
+    client, db_conn, mcp_server, study_root, tmp_path
+):
+    from app.services import packaged_assets as packaged_assets_svc
+
+    packaged_root = tmp_path / ".packaged"
+    manifest_path = packaged_root / "manifest.yaml"
+    sources_root = packaged_root / "curriculum" / "sources"
+    source_dir = sources_root / "system-design-primer" / "resources" / "flash_cards"
+    source_dir.mkdir(parents=True)
+    (source_dir / "System Design.apkg").write_bytes(b"system design deck")
+    manifest_path.write_text(
+        """
+sources:
+  - id: system-design-primer
+    path: curriculum/sources/system-design-primer
+assets:
+  - id: sdp-flashcards-system-design
+    format: apkg
+    source:
+      repo: system-design-primer
+      path: resources/flash_cards/System Design.apkg
+""".lstrip(),
+        encoding="utf-8",
+    )
+    packaged_assets_svc.sync_packaged_curriculum_assets(
+        manifest_path=manifest_path,
+        sources_root=sources_root,
+        study_root=study_root,
+    )
+
+    list_course_files = get_tool_fn(mcp_server, "list_course_files")
+
+    root = await list_course_files(prefix="")
+    assert [entry["path"] for entry in root] == ["interview-engineering"]
+
+    course = await list_course_files(prefix="interview-engineering")
+    assert [entry["path"] for entry in course] == ["interview-engineering/resources"]
+
+    flashcards = await list_course_files(
+        prefix="interview-engineering/resources/flashcards"
+    )
+    assert [entry["path"] for entry in flashcards] == [
+        "interview-engineering/resources/flashcards/System Design.apkg"
+    ]
+
+
 # ── read_course_file ─────────────────────────────────────────────────────────
 
 
@@ -66,9 +117,7 @@ async def test_read_text_file(client, db_conn, mcp_server, study_root):
 
 
 @pytest.mark.asyncio
-async def test_read_missing_file_raises_or_returns_error(
-    client, db_conn, mcp_server, study_root
-):
+async def test_read_missing_file_raises_or_returns_error(client, db_conn, mcp_server, study_root):
     """Reading a nonexistent path either raises or returns an error-shaped dict."""
     read_course_file = get_tool_fn(mcp_server, "read_course_file")
 
@@ -79,9 +128,7 @@ async def test_read_missing_file_raises_or_returns_error(
         return
     # If it didn't raise, accept None / empty / error-shaped response.
     assert (
-        result is None
-        or result == []
-        or (isinstance(result, dict) and not result.get("ok", True))
+        result is None or result == [] or (isinstance(result, dict) and not result.get("ok", True))
     )
 
 
@@ -114,9 +161,7 @@ async def test_read_pdf_with_page_range(client, db_conn, mcp_server, study_root)
 
 
 @pytest.mark.asyncio
-async def test_notify_telegram_missing_env_returns_error(
-    client, db_conn, mcp_server, monkeypatch
-):
+async def test_notify_telegram_missing_env_returns_error(client, db_conn, mcp_server, monkeypatch):
     """Without TELEGRAM_BOT_TOKEN/CHAT_ID set, the tool returns ok=False with an error."""
     notify_telegram = get_tool_fn(mcp_server, "notify_telegram")
     monkeypatch.delenv("TELEGRAM_BOT_TOKEN", raising=False)
@@ -129,9 +174,7 @@ async def test_notify_telegram_missing_env_returns_error(
 
 
 @pytest.mark.asyncio
-async def test_notify_telegram_success_with_mocked_httpx(
-    client, db_conn, mcp_server, monkeypatch
-):
+async def test_notify_telegram_success_with_mocked_httpx(client, db_conn, mcp_server, monkeypatch):
     """With env set + httpx.post mocked to return ok=True, the tool returns the message_id.
 
     `httpx` is imported inside the function body, so monkeypatching the module
@@ -148,8 +191,9 @@ async def test_notify_telegram_success_with_mocked_httpx(
         def json(self):
             return {"ok": True, "result": {"message_id": 42}}
 
-    def _fake_post(url, json=None, timeout=None):  # noqa: A002 (shadow `json` like httpx)
+    def _fake_post(url: str, json: dict[str, Any] | None = None, timeout: object = None):  # noqa: A002 (shadow `json` like httpx)
         assert "api.telegram.org" in url
+        assert json is not None
         assert json["chat_id"] == 12345
         assert json["text"] == "hello"
         return _FakeResponse()

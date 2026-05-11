@@ -1,0 +1,15 @@
+{
+  "include": ["app", "scripts", "tests"],
+  "exclude": [
+    "**/__pycache__",
+    "**/.pytest_cache",
+    "**/.ruff_cache",
+    ".venv",
+    "build",
+    "curriculum/sources",
+    "web"
+  ],
+  "pythonVersion": "3.12",
+  "typeCheckingMode": "basic",
+  "reportMissingTypeStubs": false
+}

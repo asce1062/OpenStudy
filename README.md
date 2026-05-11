@@ -203,6 +203,18 @@ On first boot, everything's empty. You build it up in the UI (or via Claude thro
 4. **Course detail**: add schedule slots (weekday / time / room), upcoming deliverables, and the study topics you're expected to cover
 5. **Dashboard**: lives here. Greeting, *falling-behind* banner, metric tiles, weekly grid, course cards, deadlines + tasks.
 
+## Interview Engineering curriculum
+
+This branch also includes a manifest-driven **Interview Engineering** learning
+dashboard for software engineering interview preparation. It uses local
+curriculum source repositories under `curriculum/sources/`, generates a
+deterministic schema v2 manifest, validates source references and dependencies,
+and seeds OpenStudy idempotently with adaptive mastery units, lesson/practice
+atoms, retry metadata, assets, and source attribution. Daily agendas choose
+work from learner state rather than a fixed week plan.
+
+Start here: [`docs/interview-engineering/`](./docs/interview-engineering/).
+
 ## The MCP connector
 
 > **Prerequisite: the app needs to be reachable at a public URL.** Claude.ai and the iOS app can't talk to `localhost` — so put the box behind a domain with TLS (Caddy + Let's Encrypt does this in two lines of config). Claude Code is the exception: it can hit `http://localhost:8000/mcp` directly.
@@ -265,7 +277,7 @@ Three containers behind a single host-side reverse proxy:
 
 ## Design
 
-The visual design was prototyped in [Claude Design](https://claude.ai/design). The brief that produced this UI is at [`docs/examples/design-brief-example.md`](./docs/examples/design-brief-example.md).
+The visual design was prototyped in [Claude Design](https://claude.ai/design). The brief that produced this UI is at [`docs/claude-design-prompt.md`](./docs/claude-design-prompt.md).
 
 ## License
 
@@ -540,7 +552,7 @@ Drei Container hinter einem einzelnen Reverse Proxy auf dem Host:
 
 ## Design
 
-Das visuelle Design wurde in [Claude Design](https://claude.ai/design) prototypt. Das Brief, aus dem diese UI entstanden ist, liegt in [`docs/examples/design-brief-example.md`](./docs/examples/design-brief-example.md).
+Das visuelle Design wurde in [Claude Design](https://claude.ai/design) prototypt. Das Brief, aus dem diese UI entstanden ist, liegt in [`docs/claude-design-prompt.md`](./docs/claude-design-prompt.md).
 
 ## Lizenz
 

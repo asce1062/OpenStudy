@@ -18,6 +18,8 @@ from typing import Any, Optional
 from mcp.server.fastmcp import FastMCP, Image as MCPImage
 
 from .schemas import (
+    AgendaActionRequest,
+    AgendaResultRequest,
     AppSettingsPatch,
     CourseCreate,
     CoursePatch,
@@ -47,6 +49,7 @@ from .services import (
     lectures as lectures_svc,
     settings as settings_svc,
     storage as storage_svc,
+    agenda as agenda_svc,
 )
 
 
@@ -116,6 +119,127 @@ def register_tools(server: FastMCP) -> None:
         `list_study_topics(course_code=..., status='not_started')`."""
         summary = await dashboard_svc.get_dashboard_summary()
         return _jsonable(summary.fall_behind)
+
+    @server.tool()
+    async def generate_daily_agenda(
+        date: Optional[str] = None,
+        course_code: Optional[str] = None,
+    ) -> dict:
+        """Generate today's adaptive execution agenda.
+
+        Returns 4-6 explainable items when enough data exists, prioritising
+        overdue retry work, struggling topics, spaced reviews, active mastery
+        progression, timed practice, capacity-safe new exposure, and visible
+        flashcard assets. `date` is optional ISO format (YYYY-MM-DD);
+        `course_code` narrows the agenda."""
+        target_date = None
+        if date:
+            target_date = datetime.strptime(date, "%Y-%m-%d").date()
+        return _jsonable(
+            await agenda_svc.generate_daily_agenda(
+                target_date=target_date,
+                course_code=course_code,
+            )
+        )
+
+    @server.tool()
+    async def complete_agenda_item(
+        agenda_item_id: str,
+        source_ref: Optional[dict] = None,
+        confidence: Optional[int] = None,
+        duration_minutes: Optional[int] = None,
+        notes: Optional[str] = None,
+        error_count: Optional[int] = None,
+        completed_count: Optional[int] = None,
+        total_count: Optional[int] = None,
+    ) -> dict:
+        """Complete an agenda item and apply safe source mutations.
+
+        Study-topic items are marked studied, task items are marked done,
+        and generated/file activities are recorded as agenda events."""
+        return _jsonable(
+            await agenda_svc.complete_agenda_item(
+                agenda_item_id,
+                AgendaActionRequest(
+                    source_ref=source_ref,
+                    confidence=confidence,
+                    duration_minutes=duration_minutes,
+                    notes=notes,
+                    error_count=error_count,
+                    completed_count=completed_count,
+                    total_count=total_count,
+                ),
+            )
+        )
+
+    @server.tool()
+    async def skip_agenda_item(
+        agenda_item_id: str,
+        source_ref: Optional[dict] = None,
+        reason: Optional[str] = None,
+    ) -> dict:
+        """Skip an agenda item for the current agenda date without mutating
+        the source object. The skip is recorded as an event."""
+        return _jsonable(
+            await agenda_svc.skip_agenda_item(
+                agenda_item_id,
+                AgendaActionRequest(source_ref=source_ref, reason=reason),
+            )
+        )
+
+    @server.tool()
+    async def snooze_agenda_item(
+        agenda_item_id: str,
+        source_ref: Optional[dict] = None,
+        snooze_until: Optional[str] = None,
+        snooze_minutes: Optional[int] = None,
+        reason: Optional[str] = None,
+    ) -> dict:
+        """Snooze an agenda item until an ISO datetime or for a number of
+        minutes. Snoozed items are suppressed until the snooze expires."""
+        return _jsonable(
+            await agenda_svc.snooze_agenda_item(
+                agenda_item_id,
+                AgendaActionRequest(
+                    source_ref=source_ref,
+                    snooze_until=datetime.fromisoformat(snooze_until)
+                    if snooze_until
+                    else None,
+                    snooze_minutes=snooze_minutes,
+                    reason=reason,
+                ),
+            )
+        )
+
+    @server.tool()
+    async def log_agenda_result(
+        agenda_item_id: str,
+        outcome: str,
+        source_ref: Optional[dict] = None,
+        confidence: Optional[int] = None,
+        duration_minutes: Optional[int] = None,
+        notes: Optional[str] = None,
+        error_count: Optional[int] = None,
+        completed_count: Optional[int] = None,
+        total_count: Optional[int] = None,
+    ) -> dict:
+        """Log an execution result for an agenda item. Use this when the
+        outcome is partial, failed, skipped, or needs richer metrics."""
+        return _jsonable(
+            await agenda_svc.log_agenda_result(
+                agenda_item_id,
+                AgendaResultRequest(
+                    outcome=outcome,  # type: ignore[arg-type]
+                    source_ref=source_ref,
+                    confidence=confidence,
+                    duration_minutes=duration_minutes,
+                    notes=notes,
+                    error_count=error_count,
+                    completed_count=completed_count,
+                    total_count=total_count,
+                ),
+            )
+        )
 
     # ─────────────────────── Courses ─────────────────────────
 
@@ -374,7 +498,9 @@ def register_tools(server: FastMCP) -> None:
     ) -> list[dict]:
         """List atomic study topics — the smallest unit of material the user
         tracks progress on. Each has a `status`
-        (not_started|in_progress|studied|mastered|struggling) and optional
+        (not_started|exposure|understanding|guided_practice|
+        independent_practice|timed_execution|retry_stabilization|
+        retention_verification|mastered|struggling) and optional
         `confidence` (0–5).
 
         When to use: "what do I still need to study", "what am I behind on",
@@ -396,6 +522,14 @@ def register_tools(server: FastMCP) -> None:
         lecture_id: Optional[str] = None,
         status: str = "not_started",
         confidence: Optional[int] = None,
+        mastery_state: Optional[str] = "not_started",
+        retry_count: int = 0,
+        next_review_at: Optional[str] = None,
+        last_confidence: Optional[int] = None,
+        error_count: int = 0,
+        failure_reason: Optional[str] = None,
+        struggle_tags: Optional[list[str]] = None,
+        retry_priority: int = 0,
         notes: Optional[str] = None,
         sort_order: int = 0,
     ) -> dict:
@@ -422,6 +556,14 @@ def register_tools(server: FastMCP) -> None:
             lecture_id=lecture_id,
             status=status,  # type: ignore[arg-type]
             confidence=confidence,
+            mastery_state=mastery_state,  # type: ignore[arg-type]
+            retry_count=retry_count,
+            next_review_at=next_review_at,  # type: ignore[arg-type]
+            last_confidence=last_confidence,
+            error_count=error_count,
+            failure_reason=failure_reason,
+            struggle_tags=struggle_tags,
+            retry_priority=retry_priority,
             notes=notes,
             sort_order=sort_order,
         )
@@ -438,6 +580,14 @@ def register_tools(server: FastMCP) -> None:
         lecture_id: Optional[str] = None,
         status: Optional[str] = None,
         confidence: Optional[int] = None,
+        mastery_state: Optional[str] = None,
+        retry_count: Optional[int] = None,
+        next_review_at: Optional[str] = None,
+        last_confidence: Optional[int] = None,
+        error_count: Optional[int] = None,
+        failure_reason: Optional[str] = None,
+        struggle_tags: Optional[list[str]] = None,
+        retry_priority: Optional[int] = None,
         notes: Optional[str] = None,
         sort_order: Optional[int] = None,
     ) -> dict:
@@ -456,6 +606,14 @@ def register_tools(server: FastMCP) -> None:
             lecture_id=lecture_id,
             status=status,  # type: ignore[arg-type]
             confidence=confidence,
+            mastery_state=mastery_state,  # type: ignore[arg-type]
+            retry_count=retry_count,
+            next_review_at=next_review_at,  # type: ignore[arg-type]
+            last_confidence=last_confidence,
+            error_count=error_count,
+            failure_reason=failure_reason,
+            struggle_tags=struggle_tags,
+            retry_priority=retry_priority,
             notes=notes,
             sort_order=sort_order,
         )
@@ -682,6 +840,14 @@ def register_tools(server: FastMCP) -> None:
         due_at: Optional[str] = None,
         priority: str = "med",
         tags: Optional[list[str]] = None,
+        mastery_state: Optional[str] = "not_started",
+        retry_count: int = 0,
+        next_review_at: Optional[str] = None,
+        last_confidence: Optional[int] = None,
+        error_count: int = 0,
+        failure_reason: Optional[str] = None,
+        struggle_tags: Optional[list[str]] = None,
+        retry_priority: int = 0,
     ) -> dict:
         """Create a personal todo. `priority`: low|med|high|urgent. `due_at`
         is ISO datetime and optional — tasks without due dates are fine.
@@ -696,6 +862,14 @@ def register_tools(server: FastMCP) -> None:
             status="open",
             priority=priority,  # type: ignore[arg-type]
             tags=tags,
+            mastery_state=mastery_state,  # type: ignore[arg-type]
+            retry_count=retry_count,
+            next_review_at=next_review_at,  # type: ignore[arg-type]
+            last_confidence=last_confidence,
+            error_count=error_count,
+            failure_reason=failure_reason,
+            struggle_tags=struggle_tags,
+            retry_priority=retry_priority,
         )
         return _jsonable(await tasks_svc.create_task(payload))
 
@@ -709,6 +883,14 @@ def register_tools(server: FastMCP) -> None:
         status: Optional[str] = None,
         priority: Optional[str] = None,
         tags: Optional[list[str]] = None,
+        mastery_state: Optional[str] = None,
+        retry_count: Optional[int] = None,
+        next_review_at: Optional[str] = None,
+        last_confidence: Optional[int] = None,
+        error_count: Optional[int] = None,
+        failure_reason: Optional[str] = None,
+        struggle_tags: Optional[list[str]] = None,
+        retry_priority: Optional[int] = None,
     ) -> dict:
         """Patch a task. Setting status='done' stamps completed_at. Prefer
         `complete_task` for the common completion case, and `reopen_task`
@@ -721,6 +903,14 @@ def register_tools(server: FastMCP) -> None:
             status=status,  # type: ignore[arg-type]
             priority=priority,  # type: ignore[arg-type]
             tags=tags,
+            mastery_state=mastery_state,  # type: ignore[arg-type]
+            retry_count=retry_count,
+            next_review_at=next_review_at,  # type: ignore[arg-type]
+            last_confidence=last_confidence,
+            error_count=error_count,
+            failure_reason=failure_reason,
+            struggle_tags=struggle_tags,
+            retry_priority=retry_priority,
         )
         return _jsonable(await tasks_svc.update_task(task_id, patch))
 

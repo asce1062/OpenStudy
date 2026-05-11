@@ -1,9 +1,6 @@
 # OpenStudy stack: postgres + fastapi + frontend.
-# All three containers live on an internal docker network. Only `frontend`
-# (which serves the SPA and reverse-proxies API traffic to fastapi) and
-# `openstudy` (kept exposed for direct curl debugging) are bound to the host.
-# A user's outer reverse proxy (Caddy / nginx / Traefik / whatever)
-# terminates TLS and forwards to 127.0.0.1:8080 (the frontend container).
+# Coolify owns container networking and reverse proxy attachment. The frontend
+# service exposes port 80 for Traefik; no service publishes host ports here.
 #
 # Bring up:   ./deploy.sh
 # Logs:       docker compose logs -f openstudy
@@ -14,11 +11,10 @@ services:
     image: postgres:16-alpine
     container_name: openstudy-postgres
     restart: unless-stopped
-    env_file:
-      - path: .env.docker
-        format: raw
-        required: true
     environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
     volumes:
       - /opt/postgres-data:/var/lib/postgresql/data
@@ -28,9 +24,7 @@ services:
       timeout: 3s
       retries: 12
       start_period: 15s
-    networks: [internal]
-    # Never expose postgres to the host or internet — only the openstudy
-    # backend talks to it via the internal docker network (psycopg pool).
+    # Never expose postgres to the host or internet.
 
   openstudy:
     build:
@@ -39,19 +33,19 @@ services:
     image: openstudy:latest
     container_name: openstudy
     restart: unless-stopped
-    env_file:
-      # format: raw disables ${VAR} interpolation inside values — required so
-      # APP_PASSWORD_HASH ("$argon2id$v=19$m=...") isn't mangled by compose
-      # treating $argon2id, $v, $m as undefined variables.
-      - path: .env
-        format: raw
-        required: true
-      - path: .env.docker
-        format: raw
-        required: true
     environment:
       # Tell the storage layer where the canonical course tree lives.
       STUDY_ROOT: "/opt/courses"
+      APP_PASSWORD_HASH: ${APP_PASSWORD_HASH}
+      SESSION_SECRET: ${SESSION_SECRET}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:8000}
+      OPENSTUDY_PACKAGED_CURRICULUM: ${OPENSTUDY_PACKAGED_CURRICULUM:-1}
+      PACKAGED_CURRICULUM_ASSETS_ROOT: ${PACKAGED_CURRICULUM_ASSETS_ROOT:-/app/curriculum/sources}
+      TZ: ${TZ:-Africa/Nairobi}
+      PYTHONUNBUFFERED: ${PYTHONUNBUFFERED:-1}
     depends_on:
       postgres:
         condition: service_healthy
@@ -59,16 +53,12 @@ services:
       # Bind mount, not volume — files live on the host, container reads/writes
       # them in place. Same path inside and outside for sanity.
       - /opt/courses:/opt/courses:rw
-    ports:
-      # Bind to localhost only; Caddy on the host reverse-proxies in.
-      - "127.0.0.1:8000:8000"
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8000/api/health"]
       interval: 10s
       timeout: 5s
       retries: 6
       start_period: 30s
-    networks: [internal]
 
   frontend:
     build:
@@ -80,11 +70,11 @@ services:
         # Build-time env baked into the SPA bundle.
         #
         # API_BASE_URL is empty: the in-image Caddy proxies /api/* to the
-        # openstudy container on the internal network, so the SPA always
+        # openstudy container on the Compose network, so the SPA always
         # talks to the API as same-origin.
         #
-        # PUBLIC_SITE_URL / PUBLIC_SITE_NAME come from your .env.docker
-        # (or shell env). They land in <link rel=canonical>, OpenGraph
+        # PUBLIC_SITE_URL / PUBLIC_SITE_NAME come from Coolify-injected env
+        # (or local shell env). They land in <link rel=canonical>, OpenGraph
         # tags, JSON-LD, robots.txt, sitemap.xml and the manifest. Set
         # them to YOUR domain and name; the localhost default keeps the
         # build deterministic for first-run dev but is not what you want
@@ -100,21 +90,16 @@ services:
     image: openstudy-frontend:latest
     container_name: openstudy-frontend
     restart: unless-stopped
+    expose:
+      - "80"
+    labels:
+      - "traefik.http.services.frontend.loadbalancer.server.port=80"
     depends_on:
       openstudy:
         condition: service_started
-    ports:
-      # Bind to localhost only; the host's reverse proxy (Caddy etc.)
-      # terminates TLS and forwards here.
-      - "127.0.0.1:8080:80"
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost/"]
       interval: 15s
       timeout: 5s
       retries: 4
       start_period: 10s
-    networks: [internal]
-
-networks:
-  internal:
-    driver: bridge

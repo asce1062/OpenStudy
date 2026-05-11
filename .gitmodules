@@ -1,0 +1,21 @@
+[submodule "curriculum/sources/coding-interview-university"]
+	path = curriculum/sources/coding-interview-university
+	url = https://github.com/jwasham/coding-interview-university
+[submodule "curriculum/sources/system-design-primer"]
+	path = curriculum/sources/system-design-primer
+	url = https://github.com/donnemartin/system-design-primer
+[submodule "curriculum/sources/interactive-coding-challenges"]
+	path = curriculum/sources/interactive-coding-challenges
+	url = https://github.com/donnemartin/interactive-coding-challenges
+[submodule "curriculum/sources/computer-science-flash-cards"]
+	path = curriculum/sources/computer-science-flash-cards
+	url = https://github.com/jwasham/computer-science-flash-cards
+[submodule "curriculum/sources/practice-c"]
+	path = curriculum/sources/practice-c
+	url = https://github.com/jwasham/practice-c
+[submodule "curriculum/sources/practice-cpp"]
+	path = curriculum/sources/practice-cpp
+	url = https://github.com/jwasham/practice-cpp
+[submodule "curriculum/sources/practice-python"]
+	path = curriculum/sources/practice-python
+	url = https://github.com/jwasham/practice-python

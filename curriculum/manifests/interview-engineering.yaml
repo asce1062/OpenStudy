@@ -1,0 +1,2299 @@
+meta:
+  id: ie-curriculum-interview-engineering
+  name: Interview Engineering
+  description: Comprehensive software engineering interview preparation track
+  timezone: Africa/Nairobi
+  version: 1
+  owner: Alex Mbugua
+  format: openstudy-curriculum-manifest
+  status: draft
+  attribution_note: 'This manifest is an original study plan that references local source repositories by path and heading.
+    It intentionally avoids copying large portions of upstream content.
+
+    '
+  schema_version: 2
+  id_policy:
+    format: stable-global-kebab-case
+    lesson_prefixes:
+      ciu: Coding Interview University sourced lesson
+      icc: Interactive Coding Challenges sourced lesson
+      sdp: System Design Primer sourced lesson
+      ie: OpenStudy inferred curriculum checkpoint or project
+sources:
+- id: coding-interview-university
+  name: Coding Interview University
+  path: curriculum/sources/coding-interview-university
+  upstream: https://github.com/jwasham/coding-interview-university
+- id: system-design-primer
+  name: System Design Primer
+  path: curriculum/sources/system-design-primer
+  upstream: https://github.com/donnemartin/system-design-primer
+- id: interactive-coding-challenges
+  name: Interactive Coding Challenges
+  path: curriculum/sources/interactive-coding-challenges
+  upstream: https://github.com/donnemartin/interactive-coding-challenges
+tracks:
+- id: ie-track-core
+  name: Interview Engineering Core
+  description: 'A practical path from interview study setup through algorithms, coding challenge fluency, system design fundamentals,
+    and mock interview readiness.
+
+    '
+  audience: personal software engineering interview preparation
+  suggested_order: 1
+  modules:
+  - id: ie-module-foundations-and-study-setup
+    name: Foundations and Study Setup
+    description: Establish the study workflow, interview scope, tools, and baseline habits.
+    difficulty:
+      level: beginner
+      score: 1
+    tags:
+    - planning
+    - study-skills
+    - interview-prep
+    - workflow
+    prerequisites: []
+    lessons:
+    - id: ciu-understand-the-study-plan
+      title: Understand the study plan and expectations
+      type:
+        category: reading
+        medium: markdown
+        interaction: passive
+      source:
+        repo: coding-interview-university
+        path: README.md
+        heading: The Study Plan
+      estimated_minutes: 60
+      completion_criteria: Summarize the main phases, weekly commitment, and personal constraints.
+      suggested_order: 1
+      depends_on: []
+      difficulty:
+        level: beginner
+        score: 1
+      cognitive_load: low
+    - id: ciu-choose-primary-language
+      title: Choose and configure the primary interview language
+      type:
+        category: reading
+        medium: markdown
+        interaction: passive
+      source:
+        repo: coding-interview-university
+        path: README.md
+        heading: Choose a Programming Language
+      estimated_minutes: 75
+      completion_criteria: Pick one language and record its testing, debugging, and notebook workflow.
+      suggested_order: 2
+      depends_on:
+      - ciu-understand-the-study-plan
+      difficulty:
+        level: beginner
+        score: 1
+      cognitive_load: low
+    - id: icc-set-up-coding-challenge-workflow
+      title: Set up the coding challenge workflow
+      type:
+        category: reading
+        medium: markdown
+        interaction: passive
+      source:
+        repo: interactive-coding-challenges
+        path: README.md
+        heading: Installing and Running Challenges
+      estimated_minutes: 60
+      completion_criteria: Run or inspect one challenge notebook and one matching unit test locally.
+      suggested_order: 3
+      depends_on:
+      - ciu-choose-primary-language
+      difficulty:
+        level: beginner
+        score: 1
+      cognitive_load: low
+    - id: icc-learn-notebook-structure
+      title: Learn the challenge notebook structure
+      type:
+        category: reading
+        medium: markdown
+        interaction: passive
+      source:
+        repo: interactive-coding-challenges
+        path: README.md
+        heading: Notebook Structure
+      estimated_minutes: 45
+      completion_criteria: Explain how problem statement, constraints, tests, algorithm notes, and code sections fit together.
+      suggested_order: 4
+      depends_on:
+      - icc-set-up-coding-challenge-workflow
+      difficulty:
+        level: beginner
+        score: 1
+      cognitive_load: low
+    - id: ie-create-study-cadence
+      title: Create a repeatable daily study cadence
+      type:
+        category: checkpoint
+        medium: manifest
+        interaction: reflective
+      inferred: true
+      source:
+        repo: coding-interview-university
+        path: README.md
+        heading: The Daily Plan
+      estimated_minutes: 90
+      completion_criteria: Define flexible availability windows for reading, implementation, review, and mock interview work.
+      suggested_order: 5
+      depends_on:
+      - icc-learn-notebook-structure
+      difficulty:
+        level: beginner
+        score: 1
+      cognitive_load: low
+    - id: ie-baseline-diagnostic
+      title: Complete a baseline diagnostic
+      type:
+        category: checkpoint
+        medium: manifest
+        interaction: reflective
+      inferred: true
+      source:
+        repo: interactive-coding-challenges
+        path: README.md
+        heading: Challenges
+      estimated_minutes: 270
+      completion_criteria: Attempt five mixed easy challenges, record pass rate, timing, and topic gaps.
+      suggested_order: 6
+      depends_on:
+      - ie-create-study-cadence
+      difficulty:
+        level: beginner
+        score: 1
+      cognitive_load: high
+    suggested_order: 1
+    depends_on: []
+  - id: ie-module-complexity-and-problem-solving
+    name: Big-O and Problem Solving
+    description: Build the complexity vocabulary and repeatable approach used in coding interviews.
+    difficulty:
+      level: beginner
+      score: 1
+    tags:
+    - big-o
+    - complexity
+    - analysis
+    - problem-solving
+    prerequisites:
+    - ie-module-foundations-and-study-setup
+    lessons:
+    - id: ciu-asymptotic-notation
+      title: Learn asymptotic notation
+      type:
+        category: reading
+        medium: markdown
+        interaction: passive
+      source:
+        repo: coding-interview-university
+        path: README.md
+        heading: Algorithmic complexity / Big-O / Asymptotic analysis
+      estimated_minutes: 150
+      completion_criteria: Distinguish Big-O, Omega, and Theta on common loops and nested loops.
+      suggested_order: 1
+      depends_on:
+      - ie-baseline-diagnostic
+      difficulty:
+        level: beginner
+        score: 1
+      cognitive_load: medium
+    - id: ciu-amortized-analysis
+      title: Understand amortized analysis
+      type:
+        category: reading
+        medium: markdown
+        interaction: passive
+      source:
+        repo: coding-interview-university
+        path: README.md
+        heading: Algorithmic complexity / Big-O / Asymptotic analysis
+      estimated_minutes: 90
+      completion_criteria: Explain dynamic array resizing and hash table insertion costs using amortized terms.
+      suggested_order: 2
+      depends_on:
+      - ciu-asymptotic-notation
+      difficulty:
+        level: beginner
+        score: 1
+      cognitive_load: low
+    - id: ciu-recurrence-relations
+      title: Practice recurrence relations and divide-and-conquer costs
+      type:
+        category: reading
+        medium: markdown
+        interaction: passive
+      source:
+        repo: coding-interview-university
+        path: README.md
+        heading: Algorithmic complexity / Big-O / Asymptotic analysis
+      estimated_minutes: 120
+      completion_criteria: Solve simple recurrences for binary search, merge sort, and tree traversal.
+      suggested_order: 3
+      depends_on:
+      - ciu-amortized-analysis
+      difficulty:
+        level: beginner
+        score: 1
+      cognitive_load: medium
+    - id: ciu-complexity-cheat-sheet-review
+      title: Review common data structure and algorithm costs
+      type:
+        category: reading
+        medium: markdown
+        interaction: passive
+      source:
+        repo: coding-interview-university
+        path: README.md
+        heading: Algorithmic complexity / Big-O / Asymptotic analysis
+      estimated_minutes: 75
+      completion_criteria: Produce a one-page lookup table from memory, then correct it against the source references.
+      suggested_order: 4
+      depends_on:
+      - ciu-recurrence-relations
+      difficulty:
+        level: beginner
+        score: 1
+      cognitive_load: low
+    - id: icc-time-space-tradeoff-drills
+      title: Drill time-space tradeoffs
+      type:
+        category: coding-exercise
+        medium: notebook
+        interaction: active
+      source:
+        repo: interactive-coding-challenges
+        path: arrays_strings/two_sum/two_sum_challenge.ipynb
+      estimated_minutes: 120
+      completion_criteria: Implement brute-force and hash-based variants and compare complexity.
+      suggested_order: 5
+      depends_on:
+      - ciu-complexity-cheat-sheet-review
+      difficulty:
+        level: beginner
+        score: 1
+      cognitive_load: medium
+    - id: ie-explain-before-code-checkpoint
+      title: Explain-before-code checkpoint
+      type:
+        category: checkpoint
+        medium: manifest
+        interaction: reflective
+      inferred: true
+      source:
+        repo: coding-interview-university
+        path: README.md
+        heading: Coding Question Practice
+      estimated_minutes: 180
+      completion_criteria: Solve three unseen problems by stating constraints, approach, complexity, and tests before coding.
+      suggested_order: 6
+      depends_on:
+      - icc-time-space-tradeoff-drills
+      difficulty:
+        level: beginner
+        score: 1
+      cognitive_load: medium
+    suggested_order: 2
+    depends_on:
+    - ie-module-foundations-and-study-setup
+  - id: ie-module-arrays-strings-and-hashing
+    name: Arrays, Strings, and Hashing
+    description: Cover the highest-frequency sequence, map, and string interview patterns.
+    difficulty:
+      level: beginner
+      score: 1
+    tags:
+    - arrays
+    - strings
+    - hash-tables
+    - pointers
+    - sliding-window
+    prerequisites:
+    - ie-module-complexity-and-problem-solving
+    lessons:
+    - id: ciu-arrays-and-dynamic-arrays
+      title: Study arrays and dynamic arrays
+      type:
+        category: reading
+        medium: markdown
+        interaction: passive
+      source:
+        repo: coding-interview-university
+        path: README.md
+        heading: Arrays
+      estimated_minutes: 120
+      completion_criteria: Explain indexing, resizing, insertion, deletion, amortized append, and memory locality.
+      suggested_order: 1
+      depends_on:
+      - ie-explain-before-code-checkpoint
+      difficulty:
+        level: beginner
+        score: 1
+      cognitive_load: medium
+    - id: ie-implement-vector-project
+      title: Implement a vector-style dynamic array
+      type:
+        category: project
+        medium: manifest
+        interaction: constructive
+      inferred: true
+      source:
+        repo: coding-interview-university
+        path: README.md
+        heading: Arrays
+      estimated_minutes: 240
+      completion_criteria: Implement size, capacity, insert, delete, remove, find, and resize with tests.
+      suggested_order: 2
+      depends_on:
+      - ciu-arrays-and-dynamic-arrays
+      difficulty:
+        level: beginner
+        score: 1
+      cognitive_load: high
+    - id: icc-unique-characters
+      title: Determine if a string contains unique characters
+      type:
+        category: coding-exercise
+        medium: notebook
+        interaction: active
+      source:
+        repo: interactive-coding-challenges
+        path: arrays_strings/unique_chars/unique_chars_challenge.ipynb
+      estimated_minutes: 75
+      completion_criteria: Pass the notebook tests and explain set, sort, and bitset variants.
+      suggested_order: 3
+      depends_on:
+      - ie-implement-vector-project
+      difficulty:
+        level: beginner
+        score: 1
+      cognitive_load: medium
+    - id: icc-string-permutation-and-rotation
+      title: Solve permutation and rotation string checks
+      type:
+        category: coding-exercise
+        medium: notebook
+        interaction: active
+      source:
+        repo: interactive-coding-challenges
+        path: arrays_strings/permutation/permutation_challenge.ipynb
+      estimated_minutes: 90
+      completion_criteria: Complete permutation, then repeat the same pattern with rotation.
+      suggested_order: 4
+      depends_on:
+      - icc-unique-characters
+      difficulty:
+        level: beginner
+        score: 1
+      cognitive_load: medium
+    - id: icc-string-compression-and-reversal
+      title: Practice string compression and in-place reversal
+      type:
+        category: coding-exercise
+        medium: notebook
+        interaction: active
+      source:
+        repo: interactive-coding-challenges
+        path: arrays_strings/compress/compress_challenge.ipynb
+      estimated_minutes: 120
+      completion_criteria: Complete compression and reverse-string challenges with edge-case tests.
+      suggested_order: 5
+      depends_on:
+      - icc-string-permutation-and-rotation
+      difficulty:
+        level: beginner
+        score: 1
+      cognitive_load: medium
+    - id: ciu-hash-table-concepts
+      title: Study hash table design
+      type:
+        category: reading
+        medium: markdown
+        interaction: passive
+      source:
+        repo: coding-interview-university
+        path: README.md
+        heading: Hash table
+      estimated_minutes: 150
+      completion_criteria: Explain hashing, chaining, probing, resizing, collision handling, and common failure modes.
+      suggested_order: 6
+      depends_on:
+      - icc-string-compression-and-reversal
+      difficulty:
+        level: beginner
+        score: 1
+      cognitive_load: medium
+    - id: icc-implement-hash-table
+      title: Implement a hash table
+      type:
+        category: coding-exercise
+        medium: notebook
+        interaction: active
+      source:
+        repo: interactive-coding-challenges
+        path: arrays_strings/hash_map/hash_map_challenge.ipynb
+      estimated_minutes: 210
+      completion_criteria: Implement add, get, exists, remove, and collision behavior with tests.
+      suggested_order: 7
+      depends_on:
+      - ciu-hash-table-concepts
+      difficulty:
+        level: beginner
+        score: 1
+      cognitive_load: medium
+    - id: ie-arrays-strings-checkpoint
+      title: Arrays, strings, and hashing timed checkpoint
+      type:
+        category: checkpoint
+        medium: manifest
+        interaction: reflective
+      inferred: true
+      source:
+        repo: interactive-coding-challenges
+        path: README.md
+        heading: Arrays and Strings
+      estimated_minutes: 180
+      completion_criteria: Solve four mixed problems in 90 minutes and review missed cases.
+      suggested_order: 8
+      depends_on:
+      - icc-implement-hash-table
+      difficulty:
+        level: beginner
+        score: 1
+      cognitive_load: medium
+    suggested_order: 3
+    depends_on:
+    - ie-module-complexity-and-problem-solving
+  - id: ie-module-linked-lists-stacks-and-queues
+    name: Linked Lists, Stacks, and Queues
+    description: Build pointer fluency and the linear container patterns common in phone screens.
+    difficulty:
+      level: beginner
+      score: 2
+    tags:
+    - linked-lists
+    - stacks
+    - queues
+    - pointers
+    prerequisites:
+    - ie-module-arrays-strings-and-hashing
+    lessons:
+    - id: ciu-linked-list-concepts
+      title: Study linked list concepts and tradeoffs
+      type:
+        category: reading
+        medium: markdown
+        interaction: passive
+      source:
+        repo: coding-interview-university
+        path: README.md
+        heading: Linked Lists
+      estimated_minutes: 135
+      completion_criteria: Compare arrays and linked lists by access, insertion, deletion, memory layout, and cache behavior.
+      suggested_order: 1
+      depends_on:
+      - ie-arrays-strings-checkpoint
+      difficulty:
+        level: beginner
+        score: 2
+      cognitive_load: medium
+    - id: icc-implement-linked-list
+      title: Implement a linked list
+      type:
+        category: coding-exercise
+        medium: notebook
+        interaction: active
+      source:
+        repo: interactive-coding-challenges
+        path: linked_lists/linked_list/linked_list_challenge.ipynb
+      estimated_minutes: 210
+      completion_criteria: Implement core operations and pass the linked list tests.
+      suggested_order: 2
+      depends_on:
+      - ciu-linked-list-concepts
+      difficulty:
+        level: beginner
+        score: 2
+      cognitive_load: medium
+    - id: icc-linked-list-classic-problems
+      title: Solve duplicate removal, kth-to-last, and middle delete
+      type:
+        category: coding-exercise
+        medium: notebook
+        interaction: active
+      source:
+        repo: interactive-coding-challenges
+        path: linked_lists/remove_duplicates/remove_duplicates_challenge.ipynb
+      estimated_minutes: 180
+      completion_criteria: Complete three linked-list challenges and document pointer invariants for each.
+      suggested_order: 3
+      depends_on:
+      - icc-implement-linked-list
+      difficulty:
+        level: beginner
+        score: 2
+      cognitive_load: medium
+    - id: icc-linked-list-two-pointer-problems
+      title: Solve partition, loop start, and palindrome linked-list problems
+      type:
+        category: coding-exercise
+        medium: notebook
+        interaction: active
+      source:
+        repo: interactive-coding-challenges
+        path: linked_lists/partition/partition_challenge.ipynb
+      estimated_minutes: 210
+      completion_criteria: Complete all three and explain slow/fast pointer or runner techniques where used.
+      suggested_order: 4
+      depends_on:
+      - icc-linked-list-classic-problems
+      difficulty:
+        level: beginner
+        score: 2
+      cognitive_load: medium
+    - id: ciu-stacks-and-queues-concepts
+      title: Study stacks and queues
+      type:
+        category: reading
+        medium: markdown
+        interaction: passive
+      source:
+        repo: coding-interview-university
+        path: README.md
+        heading: Stack
+      estimated_minutes: 90
+      completion_criteria: Explain LIFO, FIFO, circular buffering, linked-list queues, and amortized operations.
+      suggested_order: 5
+      depends_on:
+      - icc-linked-list-two-pointer-problems
+      difficulty:
+        level: beginner
+        score: 2
+      cognitive_load: low
+    - id: icc-implement-stack-and-queue
+      title: Implement stack and queue primitives
+      type:
+        category: coding-exercise
+        medium: notebook
+        interaction: active
+      source:
+        repo: interactive-coding-challenges
+        path: stacks_queues/stack/stack_challenge.ipynb
+      estimated_minutes: 150
+      completion_criteria: Complete stack and queue_list challenges and pass tests.
+      suggested_order: 6
+      depends_on:
+      - ciu-stacks-and-queues-concepts
+      difficulty:
+        level: beginner
+        score: 2
+      cognitive_load: medium
+    - id: icc-stack-queue-interview-variants
+      title: Solve stack and queue interview variants
+      type:
+        category: coding-exercise
+        medium: notebook
+        interaction: active
+      source:
+        repo: interactive-coding-challenges
+        path: stacks_queues/queue_from_stacks/queue_from_stacks_challenge.ipynb
+      estimated_minutes: 180
+      completion_criteria: Complete queue-from-stacks, stack-min, sort-stack, and set-of-stacks variants.
+      suggested_order: 7
+      depends_on:
+      - icc-implement-stack-and-queue
+      difficulty:
+        level: beginner
+        score: 2
+      cognitive_load: medium
+    - id: ie-linear-structures-checkpoint
+      title: Linear structures checkpoint
+      type:
+        category: checkpoint
+        medium: manifest
+        interaction: reflective
+      inferred: true
+      source:
+        repo: interactive-coding-challenges
+        path: README.md
+        heading: Linked Lists
+      estimated_minutes: 180
+      completion_criteria: Solve one linked-list and one stack or queue problem under interview timing.
+      suggested_order: 8
+      depends_on:
+      - icc-stack-queue-interview-variants
+      difficulty:
+        level: beginner
+        score: 2
+      cognitive_load: medium
+    suggested_order: 4
+    depends_on:
+    - ie-module-arrays-strings-and-hashing
+  - id: ie-module-recursion-dynamic-programming-and-math
+    name: Recursion, Dynamic Programming, and Math
+    description: Convert recursive reasoning into memoized, bottom-up, and combinatorial solutions.
+    difficulty:
+      level: intermediate
+      score: 3
+    tags:
+    - recursion
+    - dynamic-programming
+    - math
+    - probability
+    - bit-manipulation
+    prerequisites:
+    - ie-module-linked-lists-stacks-and-queues
+    lessons:
+    - id: ciu-recursion-foundations
+      title: Study recursion patterns
+      type:
+        category: reading
+        medium: markdown
+        interaction: passive
+      source:
+        repo: coding-interview-university
+        path: README.md
+        heading: Recursion
+      estimated_minutes: 120
+      completion_criteria: Explain base cases, call stacks, recursion trees, and conversion to iteration.
+      suggested_order: 1
+      depends_on:
+      - ie-linear-structures-checkpoint
+      difficulty:
+        level: intermediate
+        score: 3
+      cognitive_load: medium
+    - id: icc-fibonacci-and-steps
+      title: Implement Fibonacci and staircase variants
+      type:
+        category: coding-exercise
+        medium: notebook
+        interaction: active
+      source:
+        repo: interactive-coding-challenges
+        path: recursion_dynamic/fibonacci/fibonacci_challenge.ipynb
+      estimated_minutes: 180
+      completion_criteria: Implement recursive, memoized, and iterative forms and compare complexity.
+      suggested_order: 2
+      depends_on:
+      - ciu-recursion-foundations
+      difficulty:
+        level: intermediate
+        score: 3
+      cognitive_load: medium
+    - id: icc-combinatorics-recursion
+      title: Practice permutations, subsets, parentheses, and Hanoi
+      type:
+        category: coding-exercise
+        medium: notebook
+        interaction: active
+      source:
+        repo: interactive-coding-challenges
+        path: recursion_dynamic/permutations/permutations_challenge.ipynb
+      estimated_minutes: 240
+      completion_criteria: Complete four recursive generation challenges and identify duplicate-work risks.
+      suggested_order: 3
+      depends_on:
+      - icc-fibonacci-and-steps
+      difficulty:
+        level: intermediate
+        score: 3
+      cognitive_load: high
+    - id: icc-dynamic-programming-core
+      title: Solve core dynamic programming problems
+      type:
+        category: coding-exercise
+        medium: notebook
+        interaction: active
+      source:
+        repo: interactive-coding-challenges
+        path: recursion_dynamic/longest_common_subsequence/longest_common_subseq_challenge.ipynb
+      estimated_minutes: 300
+      completion_criteria: Complete LCS, LIS, coin change, and grid path with state definitions.
+      suggested_order: 4
+      depends_on:
+      - icc-combinatorics-recursion
+      difficulty:
+        level: intermediate
+        score: 3
+      cognitive_load: high
+    - id: icc-knapsack-and-optimization-dp
+      title: Solve knapsack and optimization DP problems
+      type:
+        category: coding-exercise
+        medium: notebook
+        interaction: active
+      source:
+        repo: interactive-coding-challenges
+        path: recursion_dynamic/knapsack_01/knapsack_challenge.ipynb
+      estimated_minutes: 240
+      completion_criteria: Complete 0/1 knapsack, unbounded knapsack, matrix multiplication, and stock-with-k-transactions.
+      suggested_order: 5
+      depends_on:
+      - icc-dynamic-programming-core
+      difficulty:
+        level: intermediate
+        score: 3
+      cognitive_load: high
+    - id: ciu-bitwise-operations
+      title: Study and practice bitwise operations
+      type:
+        category: reading
+        medium: markdown
+        interaction: passive
+      source:
+        repo: coding-interview-university
+        path: README.md
+        heading: Bitwise operations
+      estimated_minutes: 150
+      completion_criteria: Explain masks, shifts, XOR, complements, set-bit counting, and common bit tricks.
+      suggested_order: 6
+      depends_on:
+      - icc-knapsack-and-optimization-dp
+      difficulty:
+        level: intermediate
+        score: 3
+      cognitive_load: medium
+    - id: icc-bit-manipulation-challenges
+      title: Solve bit manipulation challenges
+      type:
+        category: coding-exercise
+        medium: notebook
+        interaction: active
+      source:
+        repo: interactive-coding-challenges
+        path: bit_manipulation/bit/bit_challenge.ipynb
+      estimated_minutes: 210
+      completion_criteria: Complete common bit operations plus two bit interview variants.
+      suggested_order: 7
+      depends_on:
+      - ciu-bitwise-operations
+      difficulty:
+        level: intermediate
+        score: 3
+      cognitive_load: medium
+    - id: icc-math-and-prime-challenges
+      title: Practice math and prime-number challenges
+      type:
+        category: coding-exercise
+        medium: notebook
+        interaction: active
+      source:
+        repo: interactive-coding-challenges
+        path: math_probability/generate_primes/check_prime_challenge.ipynb
+      estimated_minutes: 180
+      completion_criteria: Complete prime generation, power-of-two, digital-root, and add-without-plus problems.
+      suggested_order: 8
+      depends_on:
+      - icc-bit-manipulation-challenges
+      difficulty:
+        level: intermediate
+        score: 3
+      cognitive_load: medium
+    - id: ie-recursion-dp-checkpoint
+      title: Recursion and DP checkpoint
+      type:
+        category: checkpoint
+        medium: manifest
+        interaction: reflective
+      inferred: true
+      source:
+        repo: interactive-coding-challenges
+        path: README.md
+        heading: Recursion and Dynamic Programming
+      estimated_minutes: 180
+      completion_criteria: Solve one recursion and one DP problem in a timed mock setting with state-transition notes.
+      suggested_order: 9
+      depends_on:
+      - icc-math-and-prime-challenges
+      difficulty:
+        level: intermediate
+        score: 3
+      cognitive_load: medium
+    suggested_order: 5
+    depends_on:
+    - ie-module-linked-lists-stacks-and-queues
+  - id: ie-module-trees-heaps-tries-and-graphs
+    name: Trees, Heaps, Tries, and Graphs
+    description: Build fluency with hierarchical and graph traversal problems.
+    difficulty:
+      level: intermediate
+      score: 3
+    tags:
+    - trees
+    - binary-search-trees
+    - heaps
+    - tries
+    - graphs
+    - bfs
+    - dfs
+    prerequisites:
+    - ie-module-recursion-dynamic-programming-and-math
+    lessons:
+    - id: ciu-tree-traversal-concepts
+      title: Study tree traversal concepts
+      type:
+        category: reading
+        medium: markdown
+        interaction: passive
+      source:
+        repo: coding-interview-university
+        path: README.md
+        heading: Trees - Intro
+      estimated_minutes: 150
+      completion_criteria: Explain preorder, inorder, postorder, level order, BFS, DFS, and traversal space costs.
+      suggested_order: 1
+      depends_on:
+      - ie-recursion-dp-checkpoint
+      difficulty:
+        level: intermediate
+        score: 3
+      cognitive_load: medium
+    - id: icc-tree-dfs-bfs-height
+      title: Implement tree DFS, BFS, and height
+      type:
+        category: coding-exercise
+        medium: notebook
+        interaction: active
+      source:
+        repo: interactive-coding-challenges
+        path: graphs_trees/tree_dfs/dfs_challenge.ipynb
+      estimated_minutes: 210
+      completion_criteria: Complete DFS, BFS, and height challenges and compare recursive vs iterative forms.
+      suggested_order: 2
+      depends_on:
+      - ciu-tree-traversal-concepts
+      difficulty:
+        level: intermediate
+        score: 3
+      cognitive_load: medium
+    - id: ciu-binary-search-trees
+      title: Study binary search trees
+      type:
+        category: reading
+        medium: markdown
+        interaction: passive
+      source:
+        repo: coding-interview-university
+        path: README.md
+        heading: 'Binary search trees: BSTs'
+      estimated_minutes: 180
+      completion_criteria: Explain insert, search, delete, min/max, validation, successor, and height sensitivity.
+      suggested_order: 3
+      depends_on:
+      - icc-tree-dfs-bfs-height
+      difficulty:
+        level: intermediate
+        score: 3
+      cognitive_load: medium
+    - id: icc-bst-challenges
+      title: Solve binary search tree challenges
+      type:
+        category: coding-exercise
+        medium: notebook
+        interaction: active
+      source:
+        repo: interactive-coding-challenges
+        path: graphs_trees/bst/bst_challenge.ipynb
+      estimated_minutes: 300
+      completion_criteria: Complete BST implementation plus validation, min-height, successor, and second-largest variants.
+      suggested_order: 4
+      depends_on:
+      - ciu-binary-search-trees
+      difficulty:
+        level: intermediate
+        score: 3
+      cognitive_load: high
+    - id: ciu-heap-and-priority-queue
+      title: Study heaps and priority queues
+      type:
+        category: reading
+        medium: markdown
+        interaction: passive
+      source:
+        repo: coding-interview-university
+        path: README.md
+        heading: Heap / Priority Queue / Binary Heap
+      estimated_minutes: 150
+      completion_criteria: Explain heap invariants, array indexing, sift-up, sift-down, heapify, and heap sort.
+      suggested_order: 5
+      depends_on:
+      - icc-bst-challenges
+      difficulty:
+        level: intermediate
+        score: 3
+      cognitive_load: medium
+    - id: icc-implement-min-heap-and-priority-queue
+      title: Implement heap and priority queue structures
+      type:
+        category: coding-exercise
+        medium: notebook
+        interaction: active
+      source:
+        repo: interactive-coding-challenges
+        path: graphs_trees/min_heap/min_heap_challenge.ipynb
+      estimated_minutes: 180
+      completion_criteria: Complete min-heap and priority-queue backed by an array.
+      suggested_order: 6
+      depends_on:
+      - ciu-heap-and-priority-queue
+      difficulty:
+        level: intermediate
+        score: 3
+      cognitive_load: medium
+    - id: icc-trie-and-tree-variants
+      title: Solve trie and tree variant problems
+      type:
+        category: coding-exercise
+        medium: notebook
+        interaction: active
+      source:
+        repo: interactive-coding-challenges
+        path: graphs_trees/trie/trie_challenge.ipynb
+      estimated_minutes: 180
+      completion_criteria: Complete trie, level lists, balance check, LCA, and invert-tree variants.
+      suggested_order: 7
+      depends_on:
+      - icc-implement-min-heap-and-priority-queue
+      difficulty:
+        level: intermediate
+        score: 3
+      cognitive_load: medium
+    - id: ciu-graph-concepts
+      title: Study graph representation and traversal
+      type:
+        category: reading
+        medium: markdown
+        interaction: passive
+      source:
+        repo: coding-interview-university
+        path: README.md
+        heading: Graphs
+      estimated_minutes: 180
+      completion_criteria: Compare adjacency matrix, adjacency list, adjacency map, object graph, BFS, DFS, and shortest-path
+        use cases.
+      suggested_order: 8
+      depends_on:
+      - icc-trie-and-tree-variants
+      difficulty:
+        level: intermediate
+        score: 3
+      cognitive_load: medium
+    - id: icc-graph-challenges
+      title: Solve graph implementation and traversal challenges
+      type:
+        category: coding-exercise
+        medium: notebook
+        interaction: active
+      source:
+        repo: interactive-coding-challenges
+        path: graphs_trees/graph/graph_challenge.ipynb
+      estimated_minutes: 270
+      completion_criteria: Complete graph, graph DFS, graph BFS, path-exists, build-order, and shortest-path challenges.
+      suggested_order: 9
+      depends_on:
+      - ciu-graph-concepts
+      difficulty:
+        level: intermediate
+        score: 3
+      cognitive_load: high
+    - id: ie-trees-graphs-checkpoint
+      title: Trees and graphs checkpoint
+      type:
+        category: checkpoint
+        medium: manifest
+        interaction: reflective
+      inferred: true
+      source:
+        repo: interactive-coding-challenges
+        path: README.md
+        heading: Graphs and Trees
+      estimated_minutes: 180
+      completion_criteria: Solve one tree and one graph problem under timing with complexity analysis.
+      suggested_order: 10
+      depends_on:
+      - icc-graph-challenges
+      difficulty:
+        level: intermediate
+        score: 3
+      cognitive_load: medium
+    suggested_order: 6
+    depends_on:
+    - ie-module-recursion-dynamic-programming-and-math
+  - id: ie-module-sorting-searching-and-order-statistics
+    name: Sorting, Searching, and Order Statistics
+    description: Learn implementation details, stability, runtime tradeoffs, and search patterns.
+    difficulty:
+      level: intermediate
+      score: 4
+    tags:
+    - sorting
+    - searching
+    - binary-search
+    - order-statistics
+    prerequisites:
+    - ie-module-trees-heaps-tries-and-graphs
+    lessons:
+    - id: ciu-binary-search
+      title: Study binary search
+      type:
+        category: reading
+        medium: markdown
+        interaction: passive
+      source:
+        repo: coding-interview-university
+        path: README.md
+        heading: Binary search
+      estimated_minutes: 90
+      completion_criteria: Implement iterative and recursive binary search and explain boundary invariants.
+      suggested_order: 1
+      depends_on:
+      - ie-trees-graphs-checkpoint
+      difficulty:
+        level: intermediate
+        score: 4
+      cognitive_load: medium
+    - id: icc-rotated-array-search
+      title: Search a sorted rotated array
+      type:
+        category: coding-exercise
+        medium: notebook
+        interaction: active
+      source:
+        repo: interactive-coding-challenges
+        path: sorting_searching/rotated_array_search/rotated_array_search_challenge.ipynb
+      estimated_minutes: 90
+      completion_criteria: Pass tests and explain how the sorted half is selected.
+      suggested_order: 2
+      depends_on:
+      - ciu-binary-search
+      difficulty:
+        level: intermediate
+        score: 4
+      cognitive_load: medium
+    - id: icc-sorted-matrix-search
+      title: Search a sorted matrix
+      type:
+        category: coding-exercise
+        medium: notebook
+        interaction: active
+      source:
+        repo: interactive-coding-challenges
+        path: sorting_searching/search_sorted_matrix/search_sorted_matrix_challenge.ipynb
+      estimated_minutes: 90
+      completion_criteria: Pass tests and compare staircase search with binary-search alternatives.
+      suggested_order: 3
+      depends_on:
+      - icc-rotated-array-search
+      difficulty:
+        level: intermediate
+        score: 4
+      cognitive_load: medium
+    - id: ciu-sorting-concepts
+      title: Study sorting algorithms and stability
+      type:
+        category: reading
+        medium: markdown
+        interaction: passive
+      source:
+        repo: coding-interview-university
+        path: README.md
+        heading: Sorting
+      estimated_minutes: 180
+      completion_criteria: Explain stability, best/average/worst cases, in-place behavior, and data-structure fit.
+      suggested_order: 4
+      depends_on:
+      - icc-sorted-matrix-search
+      difficulty:
+        level: intermediate
+        score: 4
+      cognitive_load: medium
+    - id: icc-elementary-sorts
+      title: Implement selection and insertion sort
+      type:
+        category: coding-exercise
+        medium: notebook
+        interaction: active
+      source:
+        repo: interactive-coding-challenges
+        path: sorting_searching/selection_sort/selection_sort_challenge.ipynb
+      estimated_minutes: 120
+      completion_criteria: Complete selection and insertion sort and state when quadratic sorts are acceptable.
+      suggested_order: 5
+      depends_on:
+      - ciu-sorting-concepts
+      difficulty:
+        level: intermediate
+        score: 4
+      cognitive_load: medium
+    - id: icc-divide-and-conquer-sorts
+      title: Implement merge sort and quicksort
+      type:
+        category: coding-exercise
+        medium: notebook
+        interaction: active
+      source:
+        repo: interactive-coding-challenges
+        path: sorting_searching/merge_sort/merge_sort_challenge.ipynb
+      estimated_minutes: 180
+      completion_criteria: Complete merge sort and quicksort and compare space, stability, and pivot risks.
+      suggested_order: 6
+      depends_on:
+      - icc-elementary-sorts
+      difficulty:
+        level: intermediate
+        score: 4
+      cognitive_load: medium
+    - id: icc-linear-and-bucket-style-sorts
+      title: Implement radix sort
+      type:
+        category: coding-exercise
+        medium: notebook
+        interaction: active
+      source:
+        repo: interactive-coding-challenges
+        path: sorting_searching/radix_sort/radix_sort_challenge.ipynb
+      estimated_minutes: 120
+      completion_criteria: Complete radix sort and describe input constraints required for linear-time behavior.
+      suggested_order: 7
+      depends_on:
+      - icc-divide-and-conquer-sorts
+      difficulty:
+        level: intermediate
+        score: 4
+      cognitive_load: medium
+    - id: icc-merge-and-group-sorted-data
+      title: Merge and group sorted data
+      type:
+        category: coding-exercise
+        medium: notebook
+        interaction: active
+      source:
+        repo: interactive-coding-challenges
+        path: sorting_searching/merge_into/merge_into_challenge.ipynb
+      estimated_minutes: 120
+      completion_criteria: Complete merge-into and anagram grouping challenges.
+      suggested_order: 8
+      depends_on:
+      - icc-linear-and-bucket-style-sorts
+      difficulty:
+        level: intermediate
+        score: 4
+      cognitive_load: medium
+    - id: ie-sorting-searching-checkpoint
+      title: Sorting and searching checkpoint
+      type:
+        category: checkpoint
+        medium: manifest
+        interaction: reflective
+      inferred: true
+      source:
+        repo: interactive-coding-challenges
+        path: README.md
+        heading: Sorting
+      estimated_minutes: 150
+      completion_criteria: Solve one binary-search variant and one sorting implementation from scratch under timing.
+      suggested_order: 9
+      depends_on:
+      - icc-merge-and-group-sorted-data
+      difficulty:
+        level: intermediate
+        score: 4
+      cognitive_load: medium
+    suggested_order: 7
+    depends_on:
+    - ie-module-trees-heaps-tries-and-graphs
+  - id: ie-module-coding-challenge-practice-loop
+    name: Coding Challenge Practice Loop
+    description: Turn topic knowledge into repeatable interview performance.
+    difficulty:
+      level: intermediate
+      score: 4
+    tags:
+    - practice
+    - testing
+    - notebooks
+    - review
+    - timed-drills
+    prerequisites:
+    - ie-module-sorting-searching-and-order-statistics
+    lessons:
+    - id: ciu-challenge-practice-strategy
+      title: Build a challenge practice strategy
+      type:
+        category: reading
+        medium: markdown
+        interaction: passive
+      source:
+        repo: coding-interview-university
+        path: README.md
+        heading: Coding Question Practice
+      estimated_minutes: 90
+      completion_criteria: Define a rotation across weak topics, mixed review, and spaced repetition.
+      suggested_order: 1
+      depends_on:
+      - ie-sorting-searching-checkpoint
+      difficulty:
+        level: intermediate
+        score: 4
+      cognitive_load: medium
+    - id: icc-arrays-and-online-judge-mixed-set
+      title: Complete arrays and online judge mixed set
+      type:
+        category: coding-exercise
+        medium: notebook
+        interaction: active
+      source:
+        repo: interactive-coding-challenges
+        path: online_judges/merge_ranges/merge_ranges_challenge.ipynb
+      estimated_minutes: 240
+      completion_criteria: Complete merge ranges, max profit, move zeroes, ransom note, and longest substring variants.
+      suggested_order: 2
+      depends_on:
+      - ciu-challenge-practice-strategy
+      difficulty:
+        level: intermediate
+        score: 4
+      cognitive_load: high
+    - id: icc-graph-and-dp-mixed-set
+      title: Complete graph and DP mixed set
+      type:
+        category: coding-exercise
+        medium: markdown
+        interaction: active
+      source:
+        repo: interactive-coding-challenges
+        path: README.md
+        heading: Challenges
+      estimated_minutes: 300
+      completion_criteria: Complete six mixed graph, tree, recursion, and DP problems without looking at solutions first.
+      suggested_order: 3
+      depends_on:
+      - icc-arrays-and-online-judge-mixed-set
+      difficulty:
+        level: intermediate
+        score: 4
+      cognitive_load: high
+    - id: ie-review-solutions-after-delay
+      title: Review solutions after a delay
+      type:
+        category: checkpoint
+        medium: manifest
+        interaction: reflective
+      inferred: true
+      source:
+        repo: interactive-coding-challenges
+        path: README.md
+        heading: Challenge Solutions
+      estimated_minutes: 180
+      completion_criteria: Revisit missed problems after 24 hours and write corrected pattern notes.
+      suggested_order: 4
+      depends_on:
+      - icc-graph-and-dp-mixed-set
+      difficulty:
+        level: intermediate
+        score: 4
+      cognitive_load: medium
+    - id: icc-unit-test-discipline
+      title: Practice unit-test discipline
+      type:
+        category: coding-exercise
+        medium: markdown
+        interaction: active
+      source:
+        repo: interactive-coding-challenges
+        path: README.md
+        heading: Running Challenges
+      estimated_minutes: 150
+      completion_criteria: Run relevant tests for five challenges and add at least two personal edge cases per challenge.
+      suggested_order: 5
+      depends_on:
+      - ie-review-solutions-after-delay
+      difficulty:
+        level: intermediate
+        score: 4
+      cognitive_load: medium
+    - id: ie-timed-phone-screen-set
+      title: Complete a timed phone-screen problem set
+      type:
+        category: checkpoint
+        medium: manifest
+        interaction: reflective
+      inferred: true
+      source:
+        repo: interactive-coding-challenges
+        path: README.md
+        heading: Challenges Categories
+      estimated_minutes: 180
+      completion_criteria: Complete two 45-minute problems with verbalized approach and postmortem notes.
+      suggested_order: 6
+      depends_on:
+      - icc-unit-test-discipline
+      difficulty:
+        level: intermediate
+        score: 4
+      cognitive_load: medium
+    - id: ie-weekly-error-log
+      title: Maintain an adaptive error log
+      type:
+        category: checkpoint
+        medium: manifest
+        interaction: reflective
+      inferred: true
+      source:
+        repo: coding-interview-university
+        path: README.md
+        heading: Don't Make My Mistakes
+      estimated_minutes: 60
+      completion_criteria: Classify misses by misunderstanding, implementation bug, missed edge case, complexity, or time
+        management.
+      suggested_order: 7
+      depends_on:
+      - ie-timed-phone-screen-set
+      difficulty:
+        level: intermediate
+        score: 4
+      cognitive_load: medium
+    suggested_order: 8
+    depends_on:
+    - ie-module-sorting-searching-and-order-statistics
+  - id: ie-module-system-design-foundations
+    name: System Design Foundations
+    description: Establish the vocabulary and interview method for scalable service design.
+    difficulty:
+      level: intermediate
+      score: 5
+    tags:
+    - system-design
+    - scalability
+    - tradeoffs
+    - interview-process
+    prerequisites:
+    - ie-module-coding-challenge-practice-loop
+    lessons:
+    - id: ciu-system-design-context-from-ciu
+      title: Understand when system design appears in interviews
+      type:
+        category: reading
+        medium: markdown
+        interaction: passive
+      source:
+        repo: coding-interview-university
+        path: README.md
+        heading: System Design, Scalability, Data Handling
+      estimated_minutes: 75
+      completion_criteria: Identify target role expectations and expected depth for system design questions.
+      suggested_order: 1
+      depends_on:
+      - ie-weekly-error-log
+      difficulty:
+        level: intermediate
+        score: 5
+      cognitive_load: medium
+    - id: sdp-system-design-primer-index
+      title: Review the system design topic index
+      type:
+        category: reading
+        medium: markdown
+        interaction: passive
+      source:
+        repo: system-design-primer
+        path: README.md
+        heading: Index of system design topics
+      estimated_minutes: 60
+      completion_criteria: Map the primer topics into networking, compute, data, caching, asynchronous work, and interview
+        practice.
+      suggested_order: 2
+      depends_on:
+      - ciu-system-design-context-from-ciu
+      difficulty:
+        level: intermediate
+        score: 5
+      cognitive_load: medium
+    - id: sdp-scalability-start-here
+      title: Start with scalability fundamentals
+      type:
+        category: reading
+        medium: markdown
+        interaction: passive
+      source:
+        repo: system-design-primer
+        path: README.md
+        heading: 'System design topics: start here'
+      estimated_minutes: 150
+      completion_criteria: Explain vertical scaling, horizontal scaling, caching, load balancing, replication, and partitioning.
+      suggested_order: 3
+      depends_on:
+      - sdp-system-design-primer-index
+      difficulty:
+        level: intermediate
+        score: 5
+      cognitive_load: medium
+    - id: sdp-performance-latency-throughput
+      title: Distinguish performance, scalability, latency, and throughput
+      type:
+        category: reading
+        medium: markdown
+        interaction: passive
+      source:
+        repo: system-design-primer
+        path: README.md
+        heading: Performance vs scalability
+      estimated_minutes: 90
+      completion_criteria: Use the terms correctly in a sample design discussion.
+      suggested_order: 4
+      depends_on:
+      - sdp-scalability-start-here
+      difficulty:
+        level: intermediate
+        score: 5
+      cognitive_load: medium
+    - id: sdp-system-design-interview-method
+      title: Learn the system design interview method
+      type:
+        category: reading
+        medium: markdown
+        interaction: passive
+      source:
+        repo: system-design-primer
+        path: README.md
+        heading: How to approach a system design interview question
+      estimated_minutes: 120
+      completion_criteria: Practice use cases, constraints, high-level design, component design, and scaling sequence.
+      suggested_order: 5
+      depends_on:
+      - sdp-performance-latency-throughput
+      difficulty:
+        level: intermediate
+        score: 5
+      cognitive_load: medium
+    - id: sdp-back-of-the-envelope-calculations
+      title: Practice back-of-the-envelope calculations
+      type:
+        category: coding-exercise
+        medium: markdown
+        interaction: active
+      source:
+        repo: system-design-primer
+        path: README.md
+        heading: Back-of-the-envelope calculations
+      estimated_minutes: 120
+      completion_criteria: Estimate QPS, storage, bandwidth, cache size, and number of servers for two example systems.
+      suggested_order: 6
+      depends_on:
+      - sdp-system-design-interview-method
+      difficulty:
+        level: intermediate
+        score: 5
+      cognitive_load: medium
+    - id: sdp-latency-numbers-review
+      title: Memorize core latency numbers
+      type:
+        category: reading
+        medium: markdown
+        interaction: passive
+      source:
+        repo: system-design-primer
+        path: README.md
+        heading: Latency numbers every programmer should know
+      estimated_minutes: 90
+      completion_criteria: Recall major orders of magnitude and apply them in one capacity estimate.
+      suggested_order: 7
+      depends_on:
+      - sdp-back-of-the-envelope-calculations
+      difficulty:
+        level: intermediate
+        score: 5
+      cognitive_load: medium
+    - id: ie-first-system-design-checkpoint
+      title: First system design checkpoint
+      type:
+        category: checkpoint
+        medium: manifest
+        interaction: reflective
+      inferred: true
+      source:
+        repo: system-design-primer
+        path: README.md
+        heading: Study guide
+      estimated_minutes: 300
+      completion_criteria: Work through one design prompt on paper and critique the sequence against the primer method.
+      suggested_order: 8
+      depends_on:
+      - sdp-latency-numbers-review
+      difficulty:
+        level: intermediate
+        score: 5
+      cognitive_load: high
+    suggested_order: 9
+    depends_on:
+    - ie-module-coding-challenge-practice-loop
+  - id: ie-module-distributed-systems-and-networking
+    name: Distributed Systems and Networking
+    description: Learn the reliability, consistency, networking, and API concepts behind scalable services.
+    difficulty:
+      level: advanced
+      score: 6
+    tags:
+    - distributed-systems
+    - consistency
+    - availability
+    - networking
+    - apis
+    prerequisites:
+    - ie-module-system-design-foundations
+    lessons:
+    - id: sdp-availability-consistency-and-cap
+      title: Study availability, consistency, and CAP
+      type:
+        category: reading
+        medium: markdown
+        interaction: passive
+      source:
+        repo: system-design-primer
+        path: README.md
+        heading: Availability vs consistency
+      estimated_minutes: 150
+      completion_criteria: Explain CP, AP, partition tolerance, and when business needs choose the tradeoff.
+      suggested_order: 1
+      depends_on:
+      - ie-first-system-design-checkpoint
+      difficulty:
+        level: advanced
+        score: 6
+      cognitive_load: high
+    - id: sdp-consistency-patterns
+      title: Compare consistency patterns
+      type:
+        category: reading
+        medium: markdown
+        interaction: passive
+      source:
+        repo: system-design-primer
+        path: README.md
+        heading: Consistency patterns
+      estimated_minutes: 90
+      completion_criteria: Compare weak, eventual, and strong consistency with appropriate use cases.
+      suggested_order: 2
+      depends_on:
+      - sdp-availability-consistency-and-cap
+      difficulty:
+        level: advanced
+        score: 6
+      cognitive_load: high
+    - id: sdp-availability-patterns
+      title: Compare availability patterns
+      type:
+        category: reading
+        medium: markdown
+        interaction: passive
+      source:
+        repo: system-design-primer
+        path: README.md
+        heading: Availability patterns
+      estimated_minutes: 120
+      completion_criteria: Explain failover, replication, active-passive, active-active, and availability math.
+      suggested_order: 3
+      depends_on:
+      - sdp-consistency-patterns
+      difficulty:
+        level: advanced
+        score: 6
+      cognitive_load: high
+    - id: sdp-dns-and-cdn
+      title: Study DNS and CDNs
+      type:
+        category: reading
+        medium: markdown
+        interaction: passive
+      source:
+        repo: system-design-primer
+        path: README.md
+        heading: Domain name system
+      estimated_minutes: 150
+      completion_criteria: Explain DNS records, TTL, geolocation routing, push CDNs, pull CDNs, and stale-content tradeoffs.
+      suggested_order: 4
+      depends_on:
+      - sdp-availability-patterns
+      difficulty:
+        level: advanced
+        score: 6
+      cognitive_load: high
+    - id: sdp-load-balancing-and-proxies
+      title: Study load balancers and reverse proxies
+      type:
+        category: reading
+        medium: markdown
+        interaction: passive
+      source:
+        repo: system-design-primer
+        path: README.md
+        heading: Load balancer
+      estimated_minutes: 180
+      completion_criteria: Explain layer 4 vs layer 7 routing, SSL termination, stateless servers, and proxy tradeoffs.
+      suggested_order: 5
+      depends_on:
+      - sdp-dns-and-cdn
+      difficulty:
+        level: advanced
+        score: 6
+      cognitive_load: high
+    - id: sdp-application-layer-and-service-discovery
+      title: Study application layer scaling and service discovery
+      type:
+        category: reading
+        medium: markdown
+        interaction: passive
+      source:
+        repo: system-design-primer
+        path: README.md
+        heading: Application layer
+      estimated_minutes: 90
+      completion_criteria: Explain microservices, service discovery, and when application decomposition helps or hurts.
+      suggested_order: 6
+      depends_on:
+      - sdp-load-balancing-and-proxies
+      difficulty:
+        level: advanced
+        score: 6
+      cognitive_load: high
+    - id: sdp-communication-protocols
+      title: Compare HTTP, TCP, UDP, RPC, and REST
+      type:
+        category: reading
+        medium: markdown
+        interaction: passive
+      source:
+        repo: system-design-primer
+        path: README.md
+        heading: Communication
+      estimated_minutes: 180
+      completion_criteria: Choose protocols for internal APIs, public APIs, streaming, and low-latency use cases.
+      suggested_order: 7
+      depends_on:
+      - sdp-application-layer-and-service-discovery
+      difficulty:
+        level: advanced
+        score: 6
+      cognitive_load: high
+    - id: sdp-security-basics
+      title: Review system design security basics
+      type:
+        category: reading
+        medium: markdown
+        interaction: passive
+      source:
+        repo: system-design-primer
+        path: README.md
+        heading: Security
+      estimated_minutes: 60
+      completion_criteria: Identify baseline security considerations to mention during a design interview.
+      suggested_order: 8
+      depends_on:
+      - sdp-communication-protocols
+      difficulty:
+        level: advanced
+        score: 6
+      cognitive_load: high
+    - id: ie-distributed-systems-checkpoint
+      title: Distributed systems tradeoff checkpoint
+      type:
+        category: checkpoint
+        medium: manifest
+        interaction: reflective
+      inferred: true
+      source:
+        repo: system-design-primer
+        path: README.md
+        heading: Availability vs consistency
+      estimated_minutes: 180
+      completion_criteria: For three example products, justify consistency, availability, protocol, and network-edge choices.
+      suggested_order: 9
+      depends_on:
+      - sdp-security-basics
+      difficulty:
+        level: advanced
+        score: 6
+      cognitive_load: high
+    suggested_order: 10
+    depends_on:
+    - ie-module-system-design-foundations
+  - id: ie-module-data-storage-caching-and-queues
+    name: Data Storage, Caching, and Queues
+    description: Cover the persistence and asynchronous processing choices that dominate system design interviews.
+    difficulty:
+      level: advanced
+      score: 7
+    tags:
+    - databases
+    - sql
+    - nosql
+    - caching
+    - queues
+    - async
+    prerequisites:
+    - ie-module-distributed-systems-and-networking
+    lessons:
+    - id: sdp-relational-databases
+      title: Study relational databases and replication
+      type:
+        category: reading
+        medium: markdown
+        interaction: passive
+      source:
+        repo: system-design-primer
+        path: README.md
+        heading: Relational database management system (RDBMS)
+      estimated_minutes: 150
+      completion_criteria: Explain ACID, indexes, joins, master-slave, master-master, and read replica tradeoffs.
+      suggested_order: 1
+      depends_on:
+      - ie-distributed-systems-checkpoint
+      difficulty:
+        level: advanced
+        score: 7
+      cognitive_load: high
+    - id: sdp-federation-sharding-denormalization
+      title: Study federation, sharding, denormalization, and SQL tuning
+      type:
+        category: reading
+        medium: markdown
+        interaction: passive
+      source:
+        repo: system-design-primer
+        path: README.md
+        heading: Federation
+      estimated_minutes: 180
+      completion_criteria: Compare data partitioning options and state operational risks for each.
+      suggested_order: 2
+      depends_on:
+      - sdp-relational-databases
+      difficulty:
+        level: advanced
+        score: 7
+      cognitive_load: high
+    - id: sdp-nosql-models
+      title: Study NoSQL data models
+      type:
+        category: reading
+        medium: markdown
+        interaction: passive
+      source:
+        repo: system-design-primer
+        path: README.md
+        heading: NoSQL
+      estimated_minutes: 150
+      completion_criteria: Compare key-value, document, wide-column, and graph stores by access pattern.
+      suggested_order: 3
+      depends_on:
+      - sdp-federation-sharding-denormalization
+      difficulty:
+        level: advanced
+        score: 7
+      cognitive_load: high
+    - id: ie-sql-vs-nosql
+      title: Choose SQL or NoSQL
+      type:
+        category: checkpoint
+        medium: manifest
+        interaction: reflective
+      inferred: true
+      source:
+        repo: system-design-primer
+        path: README.md
+        heading: SQL or NoSQL
+      estimated_minutes: 90
+      completion_criteria: Justify SQL or NoSQL for five product scenarios using concrete access patterns.
+      suggested_order: 4
+      depends_on:
+      - sdp-nosql-models
+      difficulty:
+        level: advanced
+        score: 7
+      cognitive_load: high
+    - id: sdp-caching-layers
+      title: Study caching layers
+      type:
+        category: reading
+        medium: markdown
+        interaction: passive
+      source:
+        repo: system-design-primer
+        path: README.md
+        heading: Cache
+      estimated_minutes: 150
+      completion_criteria: Explain client, CDN, web server, database, application, query, and object caching.
+      suggested_order: 5
+      depends_on:
+      - ie-sql-vs-nosql
+      difficulty:
+        level: advanced
+        score: 7
+      cognitive_load: high
+    - id: sdp-cache-update-patterns
+      title: Compare cache update patterns
+      type:
+        category: reading
+        medium: markdown
+        interaction: passive
+      source:
+        repo: system-design-primer
+        path: README.md
+        heading: When to update the cache
+      estimated_minutes: 120
+      completion_criteria: Compare cache-aside, write-through, write-behind, and refresh-ahead with failure modes.
+      suggested_order: 6
+      depends_on:
+      - sdp-caching-layers
+      difficulty:
+        level: advanced
+        score: 7
+      cognitive_load: high
+    - id: sdp-asynchronous-processing
+      title: Study asynchronous processing
+      type:
+        category: reading
+        medium: markdown
+        interaction: passive
+      source:
+        repo: system-design-primer
+        path: README.md
+        heading: Asynchronism
+      estimated_minutes: 120
+      completion_criteria: Explain message queues, task queues, back pressure, retries, and eventual completion UX.
+      suggested_order: 7
+      depends_on:
+      - sdp-cache-update-patterns
+      difficulty:
+        level: advanced
+        score: 7
+      cognitive_load: high
+    - id: ie-data-layer-design-project
+      title: Design a data layer for a feed-style product
+      type:
+        category: project
+        medium: manifest
+        interaction: constructive
+      inferred: true
+      source:
+        repo: system-design-primer
+        path: solutions/system_design/twitter/README.md
+      estimated_minutes: 240
+      completion_criteria: Produce schema choices, cache keys, queue jobs, consistency model, and scaling bottlenecks.
+      suggested_order: 8
+      depends_on:
+      - sdp-asynchronous-processing
+      difficulty:
+        level: advanced
+        score: 7
+      cognitive_load: high
+    - id: ie-storage-cache-queues-checkpoint
+      title: Storage, cache, and queue checkpoint
+      type:
+        category: checkpoint
+        medium: manifest
+        interaction: reflective
+      inferred: true
+      source:
+        repo: system-design-primer
+        path: README.md
+        heading: Database
+      estimated_minutes: 180
+      completion_criteria: Explain the full data path for a write-heavy and a read-heavy system.
+      suggested_order: 9
+      depends_on:
+      - ie-data-layer-design-project
+      difficulty:
+        level: advanced
+        score: 7
+      cognitive_load: high
+    suggested_order: 11
+    depends_on:
+    - ie-module-distributed-systems-and-networking
+  - id: ie-module-system-design-interview-practice
+    name: System Design Interview Practice
+    description: Apply the interview method to worked examples and new design prompts.
+    difficulty:
+      level: advanced
+      score: 7
+    tags:
+    - system-design
+    - mock-interviews
+    - architecture
+    - design-practice
+    prerequisites:
+    - ie-module-data-storage-caching-and-queues
+    lessons:
+    - id: sdp-pastebin-or-url-shortener
+      title: Design Pastebin or a URL shortener
+      type:
+        category: coding-exercise
+        medium: markdown
+        interaction: active
+      source:
+        repo: system-design-primer
+        path: solutions/system_design/pastebin/README.md
+      estimated_minutes: 180
+      completion_criteria: Produce requirements, API, storage, cache, scale estimates, and bottleneck analysis before reading
+        the solution.
+      suggested_order: 1
+      depends_on:
+      - ie-storage-cache-queues-checkpoint
+      difficulty:
+        level: advanced
+        score: 7
+      cognitive_load: high
+    - id: sdp-twitter-timeline-and-search
+      title: Design Twitter timeline and search
+      type:
+        category: coding-exercise
+        medium: markdown
+        interaction: active
+      source:
+        repo: system-design-primer
+        path: solutions/system_design/twitter/README.md
+      estimated_minutes: 210
+      completion_criteria: Compare fanout-on-read and fanout-on-write, search indexing, cache strategy, and queue usage.
+      suggested_order: 2
+      depends_on:
+      - sdp-pastebin-or-url-shortener
+      difficulty:
+        level: advanced
+        score: 7
+      cognitive_load: high
+    - id: sdp-web-crawler
+      title: Design a web crawler
+      type:
+        category: coding-exercise
+        medium: markdown
+        interaction: active
+      source:
+        repo: system-design-primer
+        path: solutions/system_design/web_crawler/README.md
+      estimated_minutes: 180
+      completion_criteria: Cover frontier management, politeness, deduplication, retries, and distributed workers.
+      suggested_order: 3
+      depends_on:
+      - sdp-twitter-timeline-and-search
+      difficulty:
+        level: advanced
+        score: 7
+      cognitive_load: high
+    - id: sdp-social-graph
+      title: Design a social graph
+      type:
+        category: coding-exercise
+        medium: markdown
+        interaction: active
+      source:
+        repo: system-design-primer
+        path: solutions/system_design/social_graph/README.md
+      estimated_minutes: 180
+      completion_criteria: Model graph storage, traversal, privacy, mutual relationships, and hot-node concerns.
+      suggested_order: 4
+      depends_on:
+      - sdp-web-crawler
+      difficulty:
+        level: advanced
+        score: 7
+      cognitive_load: high
+    - id: sdp-sales-rank
+      title: Design category sales ranking
+      type:
+        category: coding-exercise
+        medium: markdown
+        interaction: active
+      source:
+        repo: system-design-primer
+        path: solutions/system_design/sales_rank/README.md
+      estimated_minutes: 180
+      completion_criteria: Address aggregation windows, ranking updates, batch vs stream processing, and cache invalidation.
+      suggested_order: 5
+      depends_on:
+      - sdp-social-graph
+      difficulty:
+        level: advanced
+        score: 7
+      cognitive_load: high
+    - id: sdp-query-cache
+      title: Design a query cache
+      type:
+        category: coding-exercise
+        medium: markdown
+        interaction: active
+      source:
+        repo: system-design-primer
+        path: solutions/system_design/query_cache/README.md
+      estimated_minutes: 150
+      completion_criteria: Explain cache keys, eviction, invalidation, consistency, and memory pressure.
+      suggested_order: 6
+      depends_on:
+      - sdp-sales-rank
+      difficulty:
+        level: advanced
+        score: 7
+      cognitive_load: high
+    - id: sdp-aws-scaling-case-study
+      title: Study scaling to millions of users on AWS
+      type:
+        category: reading
+        medium: markdown
+        interaction: passive
+      source:
+        repo: system-design-primer
+        path: solutions/system_design/scaling_aws/README.md
+      estimated_minutes: 150
+      completion_criteria: Recreate the evolution from single instance through load-balanced, cached, replicated architecture.
+      suggested_order: 7
+      depends_on:
+      - sdp-query-cache
+      difficulty:
+        level: advanced
+        score: 7
+      cognitive_load: high
+    - id: sdp-object-oriented-design-practice
+      title: Practice object-oriented design interview prompts
+      type:
+        category: coding-exercise
+        medium: markdown
+        interaction: active
+      source:
+        repo: system-design-primer
+        path: README.md
+        heading: Object-oriented design interview questions with solutions
+      estimated_minutes: 210
+      completion_criteria: Complete two OOD prompts and document entities, responsibilities, APIs, and edge cases.
+      suggested_order: 8
+      depends_on:
+      - sdp-aws-scaling-case-study
+      difficulty:
+        level: advanced
+        score: 7
+      cognitive_load: high
+    - id: ie-blank-page-design-drill
+      title: Complete a blank-page system design drill
+      type:
+        category: checkpoint
+        medium: manifest
+        interaction: reflective
+      inferred: true
+      source:
+        repo: system-design-primer
+        path: README.md
+        heading: Additional system design interview questions
+      estimated_minutes: 180
+      completion_criteria: Timebox a new prompt to 45 minutes and produce a coherent architecture without reading a solution.
+      suggested_order: 9
+      depends_on:
+      - sdp-object-oriented-design-practice
+      difficulty:
+        level: advanced
+        score: 7
+      cognitive_load: high
+    suggested_order: 12
+    depends_on:
+    - ie-module-data-storage-caching-and-queues
+  - id: ie-module-capstone-review-and-mock-interviews
+    name: Capstone Review and Mock Interviews
+    description: Consolidate algorithm and design skills into interview-ready performance.
+    difficulty:
+      level: advanced
+      score: 8
+    tags:
+    - review
+    - mock-interviews
+    - capstone
+    - readiness
+    prerequisites:
+    - ie-module-system-design-interview-practice
+    lessons:
+    - id: ciu-final-review-plan
+      title: Build the final review plan
+      type:
+        category: reading
+        medium: markdown
+        interaction: passive
+      source:
+        repo: coding-interview-university
+        path: README.md
+        heading: Final Review
+      estimated_minutes: 90
+      completion_criteria: Select highest-risk topics and schedule spaced review sessions.
+      suggested_order: 1
+      depends_on:
+      - ie-blank-page-design-drill
+      difficulty:
+        level: advanced
+        score: 8
+      cognitive_load: high
+    - id: ie-flashcard-and-notes-review
+      title: Review flashcards and personal notes
+      type:
+        category: checkpoint
+        medium: manifest
+        interaction: reflective
+      inferred: true
+      source:
+        repo: coding-interview-university
+        path: README.md
+        heading: 2. Use Flashcards
+      estimated_minutes: 180
+      completion_criteria: Review all active cards and retire or rewrite stale notes.
+      suggested_order: 2
+      depends_on:
+      - ciu-final-review-plan
+      difficulty:
+        level: advanced
+        score: 8
+      cognitive_load: high
+    - id: ciu-resume-and-story-review
+      title: Update resume and technical stories
+      type:
+        category: reading
+        medium: markdown
+        interaction: passive
+      source:
+        repo: coding-interview-university
+        path: README.md
+        heading: Update Your Resume
+      estimated_minutes: 120
+      completion_criteria: Update resume bullets and prepare concise stories for major projects and tradeoffs.
+      suggested_order: 3
+      depends_on:
+      - ie-flashcard-and-notes-review
+      difficulty:
+        level: advanced
+        score: 8
+      cognitive_load: high
+    - id: ciu-interview-process-review
+      title: Review interview process and behavioral preparation
+      type:
+        category: reading
+        medium: markdown
+        interaction: passive
+      source:
+        repo: coding-interview-university
+        path: README.md
+        heading: Interview Process & General Interview Prep
+      estimated_minutes: 120
+      completion_criteria: Prepare examples for collaboration, conflict, debugging, leadership, and ambiguity.
+      suggested_order: 4
+      depends_on:
+      - ciu-resume-and-story-review
+      difficulty:
+        level: advanced
+        score: 8
+      cognitive_load: high
+    - id: ie-coding-mock-one
+      title: Complete coding mock interview one
+      type:
+        category: checkpoint
+        medium: manifest
+        interaction: reflective
+      inferred: true
+      source:
+        repo: interactive-coding-challenges
+        path: README.md
+        heading: Challenges Categories
+      estimated_minutes: 120
+      completion_criteria: Complete a 45-minute mock with communication, code, tests, complexity, and postmortem.
+      suggested_order: 5
+      depends_on:
+      - ciu-interview-process-review
+      difficulty:
+        level: advanced
+        score: 8
+      cognitive_load: high
+    - id: ie-coding-mock-two
+      title: Complete coding mock interview two
+      type:
+        category: checkpoint
+        medium: manifest
+        interaction: reflective
+      inferred: true
+      source:
+        repo: interactive-coding-challenges
+        path: README.md
+        heading: Online Judges
+      estimated_minutes: 120
+      completion_criteria: Complete a second timed mock focused on a weaker topic from the error log.
+      suggested_order: 6
+      depends_on:
+      - ie-coding-mock-one
+      difficulty:
+        level: advanced
+        score: 8
+      cognitive_load: high
+    - id: ie-system-design-mock
+      title: Complete a system design mock interview
+      type:
+        category: checkpoint
+        medium: manifest
+        interaction: reflective
+      inferred: true
+      source:
+        repo: system-design-primer
+        path: README.md
+        heading: System design interview questions with solutions
+      estimated_minutes: 150
+      completion_criteria: Complete a 45-minute design mock with requirements, capacity, APIs, data model, architecture, and
+        bottlenecks.
+      suggested_order: 7
+      depends_on:
+      - ie-coding-mock-two
+      difficulty:
+        level: advanced
+        score: 8
+      cognitive_load: high
+    - id: ie-capstone-project-review
+      title: Create a capstone interview readiness packet
+      type:
+        category: project
+        medium: manifest
+        interaction: constructive
+      inferred: true
+      source:
+        repo: coding-interview-university
+        path: README.md
+        heading: Be thinking of for when the interview comes
+      estimated_minutes: 180
+      completion_criteria: Compile weak-topic list, common templates, personal projects, system designs, and final questions
+        for interviewers.
+      suggested_order: 8
+      depends_on:
+      - ie-system-design-mock
+      difficulty:
+        level: advanced
+        score: 8
+      cognitive_load: high
+    - id: ie-readiness-checkpoint
+      title: Final readiness checkpoint
+      type:
+        category: checkpoint
+        medium: manifest
+        interaction: reflective
+      inferred: true
+      source:
+        repo: coding-interview-university
+        path: README.md
+        heading: Have questions for the interviewer
+      estimated_minutes: 60
+      completion_criteria: Confirm mock performance trends, open gaps, company-specific prep, and interviewer question list.
+      suggested_order: 9
+      depends_on:
+      - ie-capstone-project-review
+      difficulty:
+        level: advanced
+        score: 8
+      cognitive_load: high
+    suggested_order: 13
+    depends_on:
+    - ie-module-system-design-interview-practice
+  depends_on: []

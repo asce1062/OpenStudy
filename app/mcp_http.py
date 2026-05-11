@@ -12,10 +12,11 @@ below sidesteps this by rebuilding the FastMCP server + entering its
 lifespan context fresh on every inbound request. Heavy compared to a
 long-lived session manager, but bulletproof.
 """
+
 from __future__ import annotations
 
 import logging
-from typing import Optional
+from typing import Any, Optional, cast
 
 from mcp.server.auth.provider import AccessToken, TokenVerifier
 from mcp.server.auth.settings import AuthSettings
@@ -37,7 +38,7 @@ class PostgrestTokenVerifier(TokenVerifier):
         row = await oauth_svc.verify_access_token(token)
         if not row:
             return None
-        scope = row.get("scope") or "mcp"
+        scope = str(row.get("scope") or "mcp")
         return AccessToken(
             token=token,
             client_id=row["client_id"],
@@ -49,8 +50,8 @@ class PostgrestTokenVerifier(TokenVerifier):
 
 def _public_origin() -> str:
     s = get_settings()
-    if s.public_url:
-        return s.public_url.rstrip("/")
+    if s.public_origin:
+        return s.public_origin
     return "http://localhost:8000"
 
 
@@ -119,8 +120,8 @@ def _build_server() -> FastMCP:
         instructions=_SERVER_INSTRUCTIONS,
         token_verifier=PostgrestTokenVerifier(resource_url),
         auth=AuthSettings(
-            issuer_url=origin,
-            resource_server_url=resource_url,
+            issuer_url=cast(Any, origin),
+            resource_server_url=cast(Any, resource_url),
         ),
         # FastMCP's default host (127.0.0.1) auto-enables DNS-rebinding protection
         # locked to localhost, which 421s any public-domain request. Disable it —
