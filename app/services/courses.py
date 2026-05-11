@@ -50,4 +50,14 @@ async def update_course(code: str, patch: CoursePatch) -> Course:
 
 
 async def delete_course(code: str) -> None:
-    await db.execute("DELETE FROM courses WHERE code = %s", code)
+    async with db.db() as conn:
+        async with conn.transaction():
+            async with conn.cursor() as cur:
+                await cur.execute("DELETE FROM file_index WHERE course_code = %s", (code,))
+                await cur.execute("DELETE FROM tasks WHERE course_code = %s", (code,))
+                await cur.execute("DELETE FROM study_topics WHERE course_code = %s", (code,))
+                await cur.execute("DELETE FROM lectures WHERE course_code = %s", (code,))
+                await cur.execute("DELETE FROM deliverables WHERE course_code = %s", (code,))
+                await cur.execute("DELETE FROM schedule_slots WHERE course_code = %s", (code,))
+                await cur.execute("DELETE FROM exams WHERE course_code = %s", (code,))
+                await cur.execute("DELETE FROM courses WHERE code = %s", (code,))
