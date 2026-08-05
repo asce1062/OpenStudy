@@ -14,7 +14,6 @@ to `/opt/courses`). All routes are session-auth-gated.
   GET    /api/files/lecture-materials  files grouped by `NN_lecture` prefix
   GET    /api/files/search             full-text search via the file_index
 """
-
 from __future__ import annotations
 
 import os
@@ -26,22 +25,14 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
 from fastapi.responses import FileResponse
 
 from .. import db
-from ..auth import require_auth
-from ..services import file_index as file_index_svc
-from ..services import storage as storage_svc
+from ..auth import require_user, User
+from ..intents import files as intent
 
 
-_UMLAUT_MAP = str.maketrans(
-    {
-        "ä": "ae",
-        "ö": "oe",
-        "ü": "ue",
-        "ß": "ss",
-        "Ä": "Ae",
-        "Ö": "Oe",
-        "Ü": "Ue",
-    }
-)
+_UMLAUT_MAP = str.maketrans({
+    "ä": "ae", "ö": "oe", "ü": "ue", "ß": "ss",
+    "Ä": "Ae", "Ö": "Oe", "Ü": "Ue",
+})
 
 
 def _sanitize_path(p: str) -> str:
@@ -56,18 +47,16 @@ def _sanitize_path(p: str) -> str:
     return "/".join(parts)
 
 
-router = APIRouter(prefix="/files", tags=["files"], dependencies=[Depends(require_auth)])
+router = APIRouter(prefix="/files", tags=["files"], dependencies=[Depends(require_user)])
 
 
 @router.get("/list")
-async def list_files(
-    prefix: str = Query(default=""), limit: int = Query(default=500, le=1000)
-) -> list[dict[str, Any]]:
+async def list_files(prefix: str = Query(default=""), limit: int = Query(default=500, le=1000), user: User = Depends(require_user)) -> list[dict[str, Any]]:
     """List entries at the given prefix. Not recursive — drill down by passing
     a folder's path as the next prefix. Returns a sorted list of
     {name, path, type, size?, content_type?, updated_at?}."""
     clean = (prefix or "").strip().strip("/")
-    entries = await storage_svc.list_files(prefix=clean, limit=limit)
+    entries = await intent.list_files(user.id, clean, limit=limit)
     out: list[dict[str, Any]] = []
     for e in entries:
         name = e.get("name") or ""
@@ -94,22 +83,20 @@ async def list_files(
 
 
 @router.get("/signed-url")
-async def signed_url(
-    path: str = Query(...), expires_in: int = Query(default=3600, ge=60, le=86400)
-) -> dict[str, Any]:
+async def signed_url(path: str = Query(...), expires_in: int = Query(default=3600, ge=60, le=86400), user: User = Depends(require_user)) -> dict[str, Any]:
     """Mint a signed URL for the given object path. Default 1-hour expiry so
     the browser can cache the PDF response for reasonable repeat views."""
     if not path or ".." in path:
         raise HTTPException(400, "invalid path")
     try:
-        url = await storage_svc.signed_url(path, expires_in=expires_in)
+        url = await intent.signed_url(user.id, path, expires_in)
     except Exception as exc:
         raise HTTPException(404, f"not found: {exc}") from exc
     return {"url": url, "expires_in": expires_in}
 
 
 @router.post("/upload-url")
-async def upload_url(body: dict[str, Any] = Body(...)) -> dict[str, Any]:
+async def upload_url(body: dict[str, Any] = Body(...), user: User = Depends(require_user)) -> dict[str, Any]:
     """Return a single-use URL the browser can PUT a file body to.
 
     Body: `{path: string}`. The path is sanitised server-side (umlaut-fold,
@@ -124,7 +111,7 @@ async def upload_url(body: dict[str, Any] = Body(...)) -> dict[str, Any]:
     if not key:
         raise HTTPException(400, "path empty after sanitisation")
     try:
-        result = await storage_svc.signed_upload_url(key)
+        result = await intent.signed_upload_url(user.id, key)
     except Exception as exc:
         raise HTTPException(500, f"failed to sign upload: {exc}") from exc
     return result
@@ -142,32 +129,33 @@ def _safe_key(raw: str) -> str:
 async def delete(
     path: str = Query(...),
     kind: str = Query(default="file", pattern="^(file|folder)$"),
+    user: User = Depends(require_user),
 ) -> dict[str, Any]:
     """Delete a file (`kind=file`) or a folder and everything under it
     (`kind=folder`, recursive)."""
     key = _safe_key(path)
     if kind == "file":
         try:
-            await storage_svc.delete([key])
+            await intent.delete(user.id, [key])
         except Exception as exc:
             raise HTTPException(500, f"failed to delete: {exc}") from exc
         return {"deleted": [key]}
 
     try:
-        children = await storage_svc.list_recursive(key)
+        children = await intent.list_recursive(user.id, key)
     except Exception as exc:
         raise HTTPException(500, f"failed to list folder: {exc}") from exc
     if not children:
         return {"deleted": []}
     try:
-        await storage_svc.delete(children)
+        await intent.delete(user.id, children)
     except Exception as exc:
         raise HTTPException(500, f"failed to delete folder: {exc}") from exc
     return {"deleted": children}
 
 
 @router.post("/folder")
-async def create_folder(body: dict[str, Any] = Body(...)) -> dict[str, Any]:
+async def create_folder(body: dict[str, Any] = Body(...), user: User = Depends(require_user)) -> dict[str, Any]:
     """Create an empty folder by writing a `.keep` placeholder so the
     prefix appears in directory listings."""
     raw = (body.get("path") or "").strip().strip("/")
@@ -178,14 +166,14 @@ async def create_folder(body: dict[str, Any] = Body(...)) -> dict[str, Any]:
         raise HTTPException(400, "path empty after sanitisation")
     placeholder = f"{key}/.keep"
     try:
-        await storage_svc.upload(placeholder, b"", content_type="application/octet-stream")
+        await intent.upload(user.id, placeholder, b"", content_type="application/octet-stream")
     except Exception as exc:
         raise HTTPException(500, f"failed to create folder: {exc}") from exc
     return {"folder": key, "placeholder": placeholder}
 
 
 @router.post("/move")
-async def move(body: dict[str, Any] = Body(...)) -> dict[str, Any]:
+async def move(body: dict[str, Any] = Body(...), user: User = Depends(require_user)) -> dict[str, Any]:
     """Rename or move a file or folder within `STUDY_ROOT`.
 
     Body: `{from, to, kind: "file"|"folder"}`. For files this is a single
@@ -206,14 +194,14 @@ async def move(body: dict[str, Any] = Body(...)) -> dict[str, Any]:
         return {"moved": []}
     if kind == "file":
         try:
-            await storage_svc.move(src, dst)
+            await intent.move(user.id, src, dst)
         except Exception as exc:
             raise HTTPException(500, f"failed to move: {exc}") from exc
         return {"moved": [{"from": src, "to": dst}]}
 
     # folder: list children, move each preserving relative path
     try:
-        children = await storage_svc.list_recursive(src)
+        children = await intent.list_recursive(user.id, src)
     except Exception as exc:
         raise HTTPException(500, f"failed to list folder: {exc}") from exc
     moved: list[dict[str, str]] = []
@@ -221,7 +209,7 @@ async def move(body: dict[str, Any] = Body(...)) -> dict[str, Any]:
         rel = child[len(src) :].lstrip("/")
         new_path = f"{dst}/{rel}" if rel else dst
         try:
-            await storage_svc.move(child, new_path)
+            await intent.move(user.id, child, new_path)
             moved.append({"from": child, "to": new_path})
         except Exception as exc:
             raise HTTPException(
@@ -231,7 +219,7 @@ async def move(body: dict[str, Any] = Body(...)) -> dict[str, Any]:
 
 
 @router.get("/lecture-materials")
-async def lecture_materials(course_code: str = Query(...)) -> dict[str, list[dict[str, Any]]]:
+async def lecture_materials(course_code: str = Query(...), user: User = Depends(require_user)) -> dict[str, list[dict[str, Any]]]:
     """List Moodle files grouped by lecture number for a course.
 
     Walks the course folder and matches files of the form `<NN>_lecture*`,
@@ -247,12 +235,11 @@ async def lecture_materials(course_code: str = Query(...)) -> dict[str, list[dic
     folder = (row.get("folder_name") or "").strip() or course_code.upper()
     try:
         # list_recursive returns full keys under the prefix
-        keys = await storage_svc.list_recursive(folder)
+        keys = await intent.list_recursive(user.id, folder)
     except Exception as exc:
         raise HTTPException(500, f"course tree list failed: {exc}") from exc
 
     import re
-
     pat = re.compile(r"^(\d{1,3})_lecture")
     grouped: dict[str, list[dict[str, Any]]] = {}
     for key in keys:
@@ -262,29 +249,25 @@ async def lecture_materials(course_code: str = Query(...)) -> dict[str, list[dic
             continue
         m = pat.match(rel)
         bucket_key = str(int(m.group(1))) if m else ""
-        grouped.setdefault(bucket_key, []).append(
-            {
-                "name": rel,
-                "path": key,
-            }
-        )
+        grouped.setdefault(bucket_key, []).append({
+            "name": rel,
+            "path": key,
+        })
     return grouped
 
 
 @router.get("/search")
-async def search(
-    q: str = Query(..., min_length=2), limit: int = Query(20, le=100)
-) -> list[dict[str, Any]]:
+async def search(q: str = Query(..., min_length=2), limit: int = Query(20, le=100), user: User = Depends(require_user)) -> list[dict[str, Any]]:
     """Full-text search across indexed course-tree files.
 
     Returns ranked matches with snippets. Match terms are wrapped in
     `<<…>>` markers in the snippet so the frontend can highlight them.
     """
-    return await file_index_svc.search(q, limit=limit)
+    return await intent.search(user.id, q, limit)
 
 
 @router.get("/raw")
-async def raw_file(path: str = Query(...)):
+async def raw_file(path: str = Query(...), user: User = Depends(require_user)):
     """Stream a file from `STUDY_ROOT` to the browser.
 
     Same-origin URL: the session cookie authenticates the request. Used
@@ -292,16 +275,16 @@ async def raw_file(path: str = Query(...)):
     """
     if not path or ".." in path:
         raise HTTPException(400, "invalid path")
-    meta = await storage_svc.stat(path)
+    meta = await intent.stat(user.id, path)
     if not meta:
         raise HTTPException(404, f"not found: {path}")
-    # Resolve via the storage layer so the same traversal guard applies
-    from pathlib import Path
-
-    root = Path(os.environ.get("STUDY_ROOT", "/opt/courses"))
-    target = (root / path.lstrip("/")).resolve()
-    if not str(target).startswith(str(root.resolve())):
-        raise HTTPException(400, "invalid path")
+    # Resolve via the storage layer so the same per-user traversal guard
+    # applies (path resolves under STUDY_ROOT/<user_id>/).
+    from ..services import storage as storage_svc
+    try:
+        target = storage_svc._safe_resolve(user.id, path)
+    except ValueError as exc:
+        raise HTTPException(400, f"invalid path: {exc}") from exc
     return FileResponse(
         path=str(target),
         media_type=meta["mimetype"],
@@ -313,7 +296,7 @@ async def raw_file(path: str = Query(...)):
 
 
 @router.put("/upload-target")
-async def upload_target(request: Request, path: str = Query(...)) -> dict[str, Any]:
+async def upload_target(request: Request, path: str = Query(...), user: User = Depends(require_user)) -> dict[str, Any]:
     """Receive a raw PUT body and write it to STUDY_ROOT/<path>.
 
     Pair with POST /upload-url which mints the URL pointing here. Same-origin,
@@ -330,7 +313,7 @@ async def upload_target(request: Request, path: str = Query(...)) -> dict[str, A
         raise HTTPException(400, "empty body")
     content_type = request.headers.get("content-type") or "application/octet-stream"
     try:
-        result = await storage_svc.upload(key, body, content_type=content_type)
+        result = await intent.upload(user.id, key, body, content_type)
     except Exception as exc:
         raise HTTPException(500, f"upload failed: {exc}") from exc
     return result

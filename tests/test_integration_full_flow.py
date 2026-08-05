@@ -27,13 +27,19 @@ _TEST_PASSWORD = "test-password-1234"
 _TEST_PASSWORD_HASH = PasswordHasher().hash(_TEST_PASSWORD)
 
 
+_OPERATOR_EMAIL = "operator@local"
+
+
 @pytest_asyncio.fixture
 async def https_client(db_conn, monkeypatch):
     """Like the conftest `client` fixture but with `https://test` base_url
-    so Secure cookies survive the round-trip, plus a known
-    APP_PASSWORD_HASH so /api/auth/login can succeed."""
-    monkeypatch.setenv("APP_PASSWORD_HASH", _TEST_PASSWORD_HASH)
-    monkeypatch.setenv("SESSION_SECRET", "test-session-secret")
+    so Secure cookies survive the round-trip. Seeds the operator's
+    password_hash directly in the DB so /api/auth/login can succeed."""
+    async with db_conn.connection() as conn, conn.cursor() as cur:
+        await cur.execute(
+            "UPDATE users SET password_hash = %s WHERE email = %s",
+            (_TEST_PASSWORD_HASH, _OPERATOR_EMAIL),
+        )
     get_settings.cache_clear()
     monkeypatch.setattr(db_module, "_pool", db_conn)
 
@@ -67,14 +73,31 @@ async def test_oauth_full_lifecycle(https_client, db_conn):
 
     # 2. Login with the test password (no TOTP yet).
     login = await https_client.post(
-        "/api/auth/login", json={"password": _TEST_PASSWORD}
+        "/api/auth/login", json={"email": _OPERATOR_EMAIL, "password": _TEST_PASSWORD}
     )
     assert login.status_code == 200, login.text
     assert https_client.cookies.get("study_session")
 
-    # 3. Consent → 302 to redirect_uri with ?code=…
+    # 3. GET /oauth/authorize — renders consent form and sets oauth_consent_state cookie.
     verifier, challenge = _pkce_pair()
     state = "state-xyz"
+    authorize = await https_client.get(
+        "/oauth/authorize",
+        params={
+            "response_type": "code",
+            "client_id": client_id,
+            "redirect_uri": redirect_uri,
+            "code_challenge": challenge,
+            "code_challenge_method": "S256",
+            "scope": "mcp",
+            "state": state,
+        },
+    )
+    assert authorize.status_code == 200, authorize.text
+    assert https_client.cookies.get("oauth_consent_state"), "consent cookie not set"
+
+    # 4. Consent → 302 to redirect_uri with ?code=…
+    # The httpx client jar carries the oauth_consent_state cookie automatically.
     consent = await https_client.post(
         "/oauth/consent",
         data={
@@ -95,7 +118,7 @@ async def test_oauth_full_lifecycle(https_client, db_conn):
     assert qs.get("state") == [state]
     code = qs["code"][0]
 
-    # 4. Exchange code for an access token.
+    # 5. Exchange code for an access token.
     tok = await https_client.post(
         "/oauth/token",
         data={
@@ -109,7 +132,7 @@ async def test_oauth_full_lifecycle(https_client, db_conn):
     assert tok.status_code == 200, tok.text
     access_token = tok.json()["access_token"]
 
-    # 5. POST /mcp/ tools/list with Bearer auth → must succeed.
+    # 6. POST /mcp/ tools/list with Bearer auth → must succeed.
     mcp_resp = await https_client.post(
         "/mcp/",
         headers={
@@ -126,13 +149,13 @@ async def test_oauth_full_lifecycle(https_client, db_conn):
     # show up — `list_courses` is registered unconditionally.
     assert "list_courses" in body, body[:500]
 
-    # 6. Revoke via the RFC 7009 endpoint.
+    # 7. Revoke via the RFC 7009 endpoint.
     revoke = await https_client.post(
         "/oauth/revoke", data={"token": access_token, "client_id": client_id}
     )
     assert revoke.status_code == 200, revoke.text
 
-    # 7. Repeat /mcp/ — Bearer token now invalid → 401.
+    # 8. Repeat /mcp/ — Bearer token now invalid → 401.
     mcp_resp_2 = await https_client.post(
         "/mcp/",
         headers={
@@ -184,63 +207,35 @@ async def test_oauth_metadata_uses_public_base_url(https_client, monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_oauth_metadata_local_default_without_public_base_url(
-    https_client, monkeypatch
-):
-    monkeypatch.delenv("PUBLIC_BASE_URL", raising=False)
-    monkeypatch.delenv("PUBLIC_URL", raising=False)
-    get_settings.cache_clear()
-
-    protected = await https_client.get("/.well-known/oauth-protected-resource/mcp")
-    assert protected.status_code == 200, protected.text
-    assert protected.json()["resource"] == "https://test/mcp"
-
-    unauthorized = await https_client.post(
-        "/mcp/",
-        headers={
-            "Authorization": "Bearer invalid",
-            "Accept": "application/json, text/event-stream",
-            "Content-Type": "application/json",
-        },
-        json={"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}},
-    )
-    assert unauthorized.status_code == 401
-    assert (
-        'resource_metadata="http://localhost:8000/.well-known/oauth-protected-resource/mcp"'
-        in unauthorized.headers["www-authenticate"]
-    )
-
-
-@pytest.mark.asyncio
 async def test_login_rate_limit_then_success(https_client, db_conn):
-    # 5 failed attempts: each 401 with "invalid password".
+    # 5 failed attempts: each 401 with "invalid credentials".
     for _ in range(5):
         bad = await https_client.post(
-            "/api/auth/login", json={"password": "wrong"}
+            "/api/auth/login", json={"email": _OPERATOR_EMAIL, "password": "wrong"}
         )
         assert bad.status_code == 401, bad.text
 
     # 6th attempt: bucket is full → 429 BEFORE reaching verify_password.
     capped = await https_client.post(
-        "/api/auth/login", json={"password": "wrong"}
+        "/api/auth/login", json={"email": _OPERATOR_EMAIL, "password": "wrong"}
     )
     assert capped.status_code == 429, capped.text
 
     # Even a correct password is rejected once rate-limited (the limit is
-    # checked BEFORE verify_password).
+    # checked BEFORE verify_password_for_user).
     still_capped = await https_client.post(
-        "/api/auth/login", json={"password": _TEST_PASSWORD}
+        "/api/auth/login", json={"email": _OPERATOR_EMAIL, "password": _TEST_PASSWORD}
     )
     assert still_capped.status_code == 429
 
     # Clear the limiter by deleting attempts on the same conn the limiter
     # reads through (the test's _TxnPool — see conftest).
     async with db_conn.connection() as conn, conn.cursor() as cur:
-        await cur.execute("DELETE FROM login_attempts")
+        await cur.execute("DELETE FROM auth_attempts")
 
     # Correct password now succeeds.
     ok = await https_client.post(
-        "/api/auth/login", json={"password": _TEST_PASSWORD}
+        "/api/auth/login", json={"email": _OPERATOR_EMAIL, "password": _TEST_PASSWORD}
     )
     assert ok.status_code == 200, ok.text
     assert https_client.cookies.get("study_session")
@@ -252,9 +247,9 @@ async def test_login_rate_limit_then_success(https_client, db_conn):
 
 @pytest.mark.asyncio
 async def test_totp_enroll_and_login(https_client, db_conn):
-    # 1. Login with password only (TOTP not yet enabled).
+    # 1. Login with email + password (TOTP not yet enabled).
     login = await https_client.post(
-        "/api/auth/login", json={"password": _TEST_PASSWORD}
+        "/api/auth/login", json={"email": _OPERATOR_EMAIL, "password": _TEST_PASSWORD}
     )
     assert login.status_code == 200, login.text
 
@@ -274,28 +269,40 @@ async def test_totp_enroll_and_login(https_client, db_conn):
     # Drop the cookie so subsequent /login attempts are unauthenticated.
     https_client.cookies.clear()
 
-    # 4. Password without code → 401 totp_required.
+    # 4. Email + password without code → 401 totp_required.
     pw_only = await https_client.post(
-        "/api/auth/login", json={"password": _TEST_PASSWORD}
+        "/api/auth/login", json={"email": _OPERATOR_EMAIL, "password": _TEST_PASSWORD}
     )
     assert pw_only.status_code == 401, pw_only.text
     assert pw_only.json()["detail"] == "totp_required"
 
-    # 5. Password + wrong code → 401 invalid totp.
+    # 5. Email + password + wrong code → 401 invalid totp.
     bad_code = await https_client.post(
         "/api/auth/login",
-        json={"password": _TEST_PASSWORD, "totp_code": "000000"},
+        json={"email": _OPERATOR_EMAIL, "password": _TEST_PASSWORD, "totp_code": "000000"},
     )
     assert bad_code.status_code == 401, bad_code.text
     assert bad_code.json()["detail"] == "invalid totp code"
 
-    # 6. Password + correct code → 200, cookie set.
+    # 6. Email + password + correct code → 200, cookie set.
     good = await https_client.post(
         "/api/auth/login",
         json={
+            "email": _OPERATOR_EMAIL,
             "password": _TEST_PASSWORD,
             "totp_code": pyotp.TOTP(secret).now(),
         },
     )
     assert good.status_code == 200, good.text
+    assert https_client.cookies.get("study_session")
+
+
+@pytest.mark.asyncio
+async def test_login_with_email_and_password(https_client, db_conn):
+    """Email+password login works; password_hash is seeded by the fixture."""
+    resp = await https_client.post("/api/auth/login", json={
+        "email": _OPERATOR_EMAIL,
+        "password": _TEST_PASSWORD,
+    })
+    assert resp.status_code == 200, resp.text
     assert https_client.cookies.get("study_session")

@@ -69,8 +69,12 @@ export function useSession() {
 export function useLogin() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: { password: string; totp_code?: string }) =>
-      api.post<SessionInfo>("/api/auth/login", input),
+    mutationFn: (input: { email?: string; password: string; totp_code?: string }) => {
+      const body: Record<string, unknown> = { password: input.password };
+      if (input.email) body.email = input.email;
+      if (input.totp_code) body.totp_code = input.totp_code;
+      return api.post<SessionInfo>("/api/auth/login", body);
+    },
     onSuccess: (data) => {
       qc.setQueryData(qk.session, data);
       invalidateAll(qc);
@@ -180,10 +184,54 @@ export function useUpdateAppSettings() {
       api.patch<AppSettings>("/api/settings", patch),
     onSuccess: (data) => {
       qc.setQueryData(qk.settings, data);
-      // Force a refetch too — if PostgREST's schema cache lags after a
-      // migration, the PATCH response can miss newly-added columns.
+      // Force a refetch too — the PATCH response may miss newly-added columns
+      // if the server returned a stale row before the migration fully propagated.
       qc.invalidateQueries({ queryKey: qk.settings });
     },
+  });
+}
+
+// ── Per-user secrets (Telegram) ────────────────────────────────────────────
+export type SecretsStatus = {
+  telegram_bot_token_set: boolean;
+  telegram_chat_id: string | null;
+  telegram_webhook_secret_set: boolean;
+};
+
+export type SecretsPatch = {
+  telegram_bot_token?: string;       // "" to clear, non-empty to set
+  telegram_chat_id?: string;
+  telegram_webhook_secret?: string;
+};
+
+export type TelegramTestResult = {
+  ok: boolean;
+  message?: string | null;
+};
+
+export function useSecretsStatus() {
+  return useQuery({
+    queryKey: ["secrets-status"] as const,
+    queryFn: () => api.get<SecretsStatus>("/api/settings/secrets"),
+    staleTime: 60_000,
+  });
+}
+
+export function useUpdateSecrets() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (patch: SecretsPatch) =>
+      api.patch<SecretsStatus>("/api/settings/secrets", patch),
+    onSuccess: (data) => {
+      qc.setQueryData(["secrets-status"], data);
+    },
+  });
+}
+
+export function useTelegramTest() {
+  return useMutation({
+    mutationFn: () =>
+      api.post<TelegramTestResult>("/api/settings/telegram/test", {}),
   });
 }
 
@@ -614,5 +662,44 @@ export function useMoveEntry() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["files", "list"] });
     },
+  });
+}
+
+// ── Auth: signup / forgot-password / reset-password / verify-email ──────────
+export type SignupResult = { ok: boolean; message: string };
+
+export function useSignup() {
+  return useMutation<SignupResult, Error, { email: string; password: string }>({
+    mutationFn: ({ email, password }) =>
+      api.post<SignupResult>("/api/auth/signup", { email, password }),
+  });
+}
+
+export type ForgotPasswordResult = { ok: boolean; message: string };
+
+export function useForgotPassword() {
+  return useMutation<ForgotPasswordResult, Error, { email: string }>({
+    mutationFn: ({ email }) =>
+      api.post<ForgotPasswordResult>("/api/auth/forgot-password", { email }),
+  });
+}
+
+export type ResetPasswordResult = { ok: boolean; message: string };
+
+export function useResetPassword() {
+  return useMutation<ResetPasswordResult, Error, { token: string; new_password: string }>({
+    mutationFn: ({ token, new_password }) =>
+      api.post<ResetPasswordResult>("/api/auth/reset-password", { token, new_password }),
+  });
+}
+
+export type VerifyEmailResult = { ok: boolean; message: string };
+
+export function useVerifyEmail(token: string | null) {
+  return useQuery<VerifyEmailResult, Error>({
+    queryKey: ["verify-email", token],
+    queryFn: () => api.get<VerifyEmailResult>("/api/auth/verify-email", { token: token! }),
+    enabled: Boolean(token),
+    retry: false,
   });
 }

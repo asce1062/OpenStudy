@@ -17,6 +17,8 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
+from app.auth import SENTINEL_USER_ID
+
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -108,6 +110,7 @@ async def test_consume_auth_code_happy_path(client, db_conn):
     cli = await _register_client("Happy Path")
     verifier, challenge = _pkce_pair()
     code = await svc.create_auth_code(
+        user_id=SENTINEL_USER_ID,
         client_id=cli["client_id"],
         redirect_uri="https://example.test/cb",
         code_challenge=challenge,
@@ -133,6 +136,7 @@ async def test_consume_auth_code_single_use(client, db_conn):
     cli = await _register_client("Single-Use")
     verifier, challenge = _pkce_pair()
     code = await svc.create_auth_code(
+        user_id=SENTINEL_USER_ID,
         client_id=cli["client_id"],
         redirect_uri="https://example.test/cb",
         code_challenge=challenge,
@@ -156,6 +160,7 @@ async def test_consume_auth_code_expired_returns_none(client, db_conn):
     cli = await _register_client("Expired Code")
     verifier, challenge = _pkce_pair()
     code = await svc.create_auth_code(
+        user_id=SENTINEL_USER_ID,
         client_id=cli["client_id"],
         redirect_uri="https://example.test/cb",
         code_challenge=challenge,
@@ -181,6 +186,7 @@ async def test_consume_auth_code_wrong_client_returns_none(client, db_conn):
     cli = await _register_client("Wrong Client")
     verifier, challenge = _pkce_pair()
     code = await svc.create_auth_code(
+        user_id=SENTINEL_USER_ID,
         client_id=cli["client_id"],
         redirect_uri="https://example.test/cb",
         code_challenge=challenge,
@@ -200,6 +206,7 @@ async def test_consume_auth_code_wrong_redirect_returns_none(client, db_conn):
     cli = await _register_client("Wrong Redirect")
     verifier, challenge = _pkce_pair()
     code = await svc.create_auth_code(
+        user_id=SENTINEL_USER_ID,
         client_id=cli["client_id"],
         redirect_uri="https://example.test/cb",
         code_challenge=challenge,
@@ -219,6 +226,7 @@ async def test_consume_auth_code_bad_verifier_returns_none(client, db_conn):
     cli = await _register_client("Bad Verifier")
     _, challenge = _pkce_pair()
     code = await svc.create_auth_code(
+        user_id=SENTINEL_USER_ID,
         client_id=cli["client_id"],
         redirect_uri="https://example.test/cb",
         code_challenge=challenge,
@@ -242,6 +250,7 @@ async def test_consume_auth_code_rejects_plain_method(client, db_conn):
     from app.services import oauth as svc
     cli = await _register_client("Plain PKCE")
     code = await svc.create_auth_code(
+        user_id=SENTINEL_USER_ID,
         client_id=cli["client_id"],
         redirect_uri="https://example.test/cb",
         code_challenge="literal-challenge",
@@ -262,7 +271,7 @@ async def test_create_and_verify_access_token(client, db_conn):
     """Issued token validates and carries the client_id + scope."""
     from app.services import oauth as svc
     cli = await _register_client("Token Issue")
-    token, expires_in = await svc.create_access_token(cli["client_id"], "mcp")
+    token, expires_in = await svc.create_access_token(SENTINEL_USER_ID, cli["client_id"], "mcp")
     assert token
     assert expires_in > 0
     row = await svc.verify_access_token(token)
@@ -284,7 +293,7 @@ async def test_token_revocation_invalidates_bearer(client, db_conn):
     """Revoking a token → verify_access_token returns None afterwards."""
     from app.services import oauth as svc
     cli = await _register_client("Revoke")
-    token, _ = await svc.create_access_token(cli["client_id"], "mcp")
+    token, _ = await svc.create_access_token(SENTINEL_USER_ID, cli["client_id"], "mcp")
     # Pre-revoke: validates fine.
     pre = await svc.verify_access_token(token)
     assert pre is not None
@@ -300,7 +309,7 @@ async def test_verify_expired_token_returns_none(client, db_conn):
     """Token past expires_at no longer validates."""
     from app.services import oauth as svc
     cli = await _register_client("Expire Token")
-    token, _ = await svc.create_access_token(cli["client_id"], "mcp")
+    token, _ = await svc.create_access_token(SENTINEL_USER_ID, cli["client_id"], "mcp")
     # Backdate expiry.
     async with db_conn.connection() as conn, conn.cursor() as cur:
         await cur.execute(
@@ -308,3 +317,24 @@ async def test_verify_expired_token_returns_none(client, db_conn):
             (datetime.now(timezone.utc) - timedelta(seconds=60), token),
         )
     assert await svc.verify_access_token(token) is None
+
+
+@pytest.mark.asyncio
+async def test_bulk_revoke_invalidates_all_tokens(client, db_conn):
+    """Bulk UPDATE revoked=true (as run by the Phase-5 migration) causes
+    verify_access_token to return None for every previously-valid token."""
+    from app.services import oauth as svc
+    cli = await _register_client("Bulk Revoke")
+    token_a, _ = await svc.create_access_token(SENTINEL_USER_ID, cli["client_id"], "mcp")
+    token_b, _ = await svc.create_access_token(SENTINEL_USER_ID, cli["client_id"], "mcp")
+    # Both tokens valid before revocation.
+    assert await svc.verify_access_token(token_a) is not None
+    assert await svc.verify_access_token(token_b) is not None
+    # Mirror the migration: UPDATE oauth_tokens SET revoked = true WHERE revoked = false.
+    async with db_conn.connection() as conn, conn.cursor() as cur:
+        await cur.execute(
+            "UPDATE oauth_tokens SET revoked = true WHERE revoked = false"
+        )
+    # Both tokens must now be invalid.
+    assert await svc.verify_access_token(token_a) is None
+    assert await svc.verify_access_token(token_b) is None

@@ -18,12 +18,14 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Iterable
+from uuid import UUID
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT))
 
 from app import db  # noqa: E402
+from app.config import get_settings  # noqa: E402
 from scripts.curriculum.validate_manifest import (  # noqa: E402
     ValidationOptions,
     load_manifest as load_manifest_for_validation,
@@ -325,11 +327,17 @@ async def row_exists(sql: str, *args: Any) -> bool:
 
 
 async def upsert_course(
-    manifest: dict[str, Any], course_code: str, dry_run: bool, counts: ActionCounts
+    user_id: UUID,
+    manifest: dict[str, Any],
+    course_code: str,
+    dry_run: bool,
+    counts: ActionCounts,
 ) -> None:
     meta = manifest["meta"]
     notes = metadata_text("course", meta["id"], course_metadata(manifest, course_code))
-    exists = await row_exists("SELECT 1 FROM courses WHERE code = %s", course_code)
+    exists = await row_exists(
+        "SELECT 1 FROM courses WHERE user_id = %s AND code = %s", user_id, course_code
+    )
     if dry_run:
         counts.update += int(exists)
         counts.create += int(not exists)
@@ -338,7 +346,7 @@ async def upsert_course(
         await db.execute(
             "UPDATE courses SET full_name = %s, short_name = %s, module_code = %s, "
             "status_kind = %s, language = %s, folder_name = %s, notes = %s "
-            "WHERE code = %s",
+            "WHERE user_id = %s AND code = %s",
             meta.get("name", "Interview Engineering"),
             "Interview Engineering",
             meta.get("id"),
@@ -346,14 +354,16 @@ async def upsert_course(
             "en",
             "interview-engineering",
             notes,
+            user_id,
             course_code,
         )
         counts.update += 1
     else:
         await db.execute(
             "INSERT INTO courses "
-            "(code, full_name, short_name, module_code, status_kind, language, folder_name, notes) "
-            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
+            "(user_id, code, full_name, short_name, module_code, status_kind, language, folder_name, notes) "
+            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
+            user_id,
             course_code,
             meta.get("name", "Interview Engineering"),
             "Interview Engineering",
@@ -367,6 +377,7 @@ async def upsert_course(
 
 
 async def find_marked_row(
+    user_id: UUID,
     table: str,
     text_column: str,
     kind: str,
@@ -375,18 +386,25 @@ async def find_marked_row(
     dry_run: bool,
 ) -> dict[str, Any] | None:
     rows = await db.fetch(
-        f"SELECT * FROM {table} WHERE course_code = %s AND {text_column} LIKE %s "
+        f"SELECT * FROM {table} WHERE user_id = %s AND course_code = %s "
+        f"AND {text_column} LIKE %s "
         "ORDER BY updated_at NULLS LAST, created_at, id",
+        user_id,
         course_code,
         f"{marker(kind, stable_id)}\n%",
     )
     if len(rows) > 1 and not dry_run:
         for duplicate in rows[1:]:
-            await db.execute(f"DELETE FROM {table} WHERE id = %s", duplicate["id"])
+            await db.execute(
+                f"DELETE FROM {table} WHERE user_id = %s AND id = %s",
+                user_id,
+                duplicate["id"],
+            )
     return rows[0] if rows else None
 
 
 async def upsert_module(
+    user_id: UUID,
     manifest: dict[str, Any],
     track: dict[str, Any],
     module: dict[str, Any],
@@ -397,7 +415,7 @@ async def upsert_module(
     module_id = module["id"]
     notes = metadata_text("module", module_id, module_metadata(manifest, track, module))
     row = await find_marked_row(
-        "study_topics", "notes", "module", module_id, course_code, dry_run
+        user_id, "study_topics", "notes", "module", module_id, course_code, dry_run
     )
     if dry_run:
         counts.update += int(row is not None)
@@ -409,7 +427,7 @@ async def upsert_module(
             "description = %s, kind = %s, status = %s, mastery_state = %s, "
             "retry_count = %s, error_count = %s, retry_priority = %s, "
             "notes = %s, sort_order = %s "
-            "WHERE id = %s",
+            "WHERE user_id = %s AND id = %s",
             course_code,
             track.get("name"),
             module.get("name"),
@@ -422,14 +440,16 @@ async def upsert_module(
             row.get("retry_priority", 0) or 0,
             notes,
             module.get("suggested_order", 0),
+            user_id,
             row["id"],
         )
         counts.update += 1
     else:
         await db.execute(
             "INSERT INTO study_topics "
-            "(course_code, chapter, name, description, kind, status, mastery_state, notes, sort_order) "
-            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
+            "(user_id, course_code, chapter, name, description, kind, status, mastery_state, notes, sort_order) "
+            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+            user_id,
             course_code,
             track.get("name"),
             module.get("name"),
@@ -444,6 +464,7 @@ async def upsert_module(
 
 
 async def upsert_lesson(
+    user_id: UUID,
     manifest: dict[str, Any],
     track: dict[str, Any],
     module: dict[str, Any],
@@ -456,7 +477,7 @@ async def upsert_lesson(
     metadata = lesson_metadata(manifest, track, module, lesson)
     description = metadata_text("lesson", lesson_id, metadata)
     row = await find_marked_row(
-        "tasks", "description", "lesson", lesson_id, course_code, dry_run
+        user_id, "tasks", "description", "lesson", lesson_id, course_code, dry_run
     )
     if dry_run:
         counts.update += int(row is not None)
@@ -467,7 +488,8 @@ async def upsert_lesson(
         await db.execute(
             "UPDATE tasks SET course_code = %s, title = %s, description = %s, "
             "status = %s, priority = %s, tags = %s, mastery_state = %s, "
-            "retry_count = %s, error_count = %s, retry_priority = %s WHERE id = %s",
+            "retry_count = %s, error_count = %s, retry_priority = %s "
+            "WHERE user_id = %s AND id = %s",
             course_code,
             lesson.get("title"),
             description,
@@ -478,13 +500,15 @@ async def upsert_lesson(
             row.get("retry_count", 0) or 0,
             row.get("error_count", 0) or 0,
             row.get("retry_priority", 0) or 0,
+            user_id,
             row["id"],
         )
         counts.update += 1
     else:
         await db.execute(
-            "INSERT INTO tasks (course_code, title, description, status, priority, tags, mastery_state) "
-            "VALUES (%s, %s, %s, %s, %s, %s, %s)",
+            "INSERT INTO tasks (user_id, course_code, title, description, status, priority, tags, mastery_state) "
+            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
+            user_id,
             course_code,
             lesson.get("title"),
             description,
@@ -497,6 +521,7 @@ async def upsert_lesson(
 
 
 async def replace_event(
+    user_id: UUID,
     kind: str,
     course_code: str,
     stable_id: str,
@@ -505,8 +530,9 @@ async def replace_event(
     counts: ActionCounts,
 ) -> None:
     rows = await db.fetch(
-        "SELECT id FROM events WHERE kind = %s AND course_code = %s "
+        "SELECT id FROM events WHERE user_id = %s AND kind = %s AND course_code = %s "
         "AND payload->>'seed_id' = %s ORDER BY created_at, id",
+        user_id,
         kind,
         course_code,
         stable_id,
@@ -518,17 +544,24 @@ async def replace_event(
     if rows:
         keeper = rows[0]["id"]
         await db.execute(
-            "UPDATE events SET payload = %s::jsonb WHERE id = %s",
+            "UPDATE events SET payload = %s::jsonb WHERE user_id = %s AND id = %s",
             compact_json(payload),
+            user_id,
             keeper,
         )
         for duplicate in rows[1:]:
-            await db.execute("DELETE FROM events WHERE id = %s", duplicate["id"])
+            await db.execute(
+                "DELETE FROM events WHERE user_id = %s AND id = %s",
+                user_id,
+                duplicate["id"],
+            )
         counts.update += 1
         counts.delete += len(rows) - 1
     else:
         await db.execute(
-            "INSERT INTO events (kind, course_code, payload) VALUES (%s, %s, %s::jsonb)",
+            "INSERT INTO events (user_id, kind, course_code, payload) "
+            "VALUES (%s, %s, %s, %s::jsonb)",
+            user_id,
             kind,
             course_code,
             compact_json(payload),
@@ -537,7 +570,11 @@ async def replace_event(
 
 
 async def seed_events(
-    manifest: dict[str, Any], course_code: str, dry_run: bool, plan: SeedPlan
+    user_id: UUID,
+    manifest: dict[str, Any],
+    course_code: str,
+    dry_run: bool,
+    plan: SeedPlan,
 ) -> None:
     meta = manifest["meta"]
     for source in manifest.get("sources", []):
@@ -549,7 +586,7 @@ async def seed_events(
             "source": source,
         }
         await replace_event(
-            "curriculum:source", course_code, source["id"], payload, dry_run, plan.sources
+            user_id, "curriculum:source", course_code, source["id"], payload, dry_run, plan.sources
         )
     for asset in manifest.get("assets", []):
         payload = {
@@ -560,7 +597,7 @@ async def seed_events(
             "asset": asset,
         }
         await replace_event(
-            "curriculum:asset", course_code, asset["id"], payload, dry_run, plan.assets
+            user_id, "curriculum:asset", course_code, asset["id"], payload, dry_run, plan.assets
         )
     for track in iter_tracks(manifest):
         payload = {
@@ -578,43 +615,61 @@ async def seed_events(
             },
         }
         await replace_event(
-            "curriculum:track", course_code, track["id"], payload, dry_run, plan.tracks
+            user_id, "curriculum:track", course_code, track["id"], payload, dry_run, plan.tracks
         )
 
 
-async def reset_seeded_data(course_code: str, dry_run: bool, plan: SeedPlan) -> None:
+async def reset_seeded_data(
+    user_id: UUID, course_code: str, dry_run: bool, plan: SeedPlan
+) -> None:
     statements = [
-        ("tasks", "DELETE FROM tasks WHERE course_code = %s AND description LIKE %s"),
-        ("study_topics", "DELETE FROM study_topics WHERE course_code = %s AND notes LIKE %s"),
+        (
+            "tasks",
+            "DELETE FROM tasks WHERE user_id = %s AND course_code = %s AND description LIKE %s",
+        ),
+        (
+            "study_topics",
+            "DELETE FROM study_topics WHERE user_id = %s AND course_code = %s AND notes LIKE %s",
+        ),
         (
             "events",
-            "DELETE FROM events WHERE course_code = %s AND kind LIKE 'curriculum:%'",
+            "DELETE FROM events WHERE user_id = %s AND course_code = %s "
+            "AND kind LIKE 'curriculum:%%'",
         ),
-        ("courses", "DELETE FROM courses WHERE code = %s"),
+        ("courses", "DELETE FROM courses WHERE user_id = %s AND code = %s"),
     ]
     for _, sql in statements:
         if "LIKE %s" in sql:
             rows = await db.fetch(
-                sql.replace("DELETE", "SELECT *"), course_code, f"{MARKER_PREFIX}%"
+                sql.replace("DELETE", "SELECT *"),
+                user_id,
+                course_code,
+                f"{MARKER_PREFIX}%",
             )
             plan.lessons.delete += len(rows) if "tasks" in sql else 0
             plan.modules.delete += len(rows) if "study_topics" in sql else 0
             if not dry_run:
-                await db.execute(sql, course_code, f"{MARKER_PREFIX}%")
+                await db.execute(sql, user_id, course_code, f"{MARKER_PREFIX}%")
         elif "events" in sql:
             rows = await db.fetch(
-                "SELECT * FROM events WHERE course_code = %s AND kind LIKE 'curriculum:%'",
+                "SELECT * FROM events WHERE user_id = %s AND course_code = %s "
+                "AND kind LIKE 'curriculum:%%'",
+                user_id,
                 course_code,
             )
             plan.sources.delete += len(rows)
             if not dry_run:
-                await db.execute(sql, course_code)
+                await db.execute(sql, user_id, course_code)
         else:
-            exists = await row_exists("SELECT 1 FROM courses WHERE code = %s", course_code)
+            exists = await row_exists(
+                "SELECT 1 FROM courses WHERE user_id = %s AND code = %s",
+                user_id,
+                course_code,
+            )
             if exists:
                 plan.courses.delete += 1
             if not dry_run:
-                await db.execute(sql, course_code)
+                await db.execute(sql, user_id, course_code)
 
 
 async def seed_manifest_data(
@@ -623,7 +678,9 @@ async def seed_manifest_data(
     course_code: str | None = None,
     dry_run: bool = False,
     reset: bool = False,
+    user_id: UUID | None = None,
 ) -> SeedPlan:
+    user_id = user_id or UUID(get_settings().operator_user_id)
     resolved_course_code = stable_course_code(manifest, course_code)
     manifest_id = manifest["meta"]["id"]
     plan = SeedPlan(
@@ -634,14 +691,29 @@ async def seed_manifest_data(
         warnings=collect_asset_warnings(manifest),
     )
     if reset:
-        await reset_seeded_data(resolved_course_code, dry_run, plan)
-    await upsert_course(manifest, resolved_course_code, dry_run, plan.courses)
-    await seed_events(manifest, resolved_course_code, dry_run, plan)
+        await reset_seeded_data(user_id, resolved_course_code, dry_run, plan)
+    await upsert_course(user_id, manifest, resolved_course_code, dry_run, plan.courses)
+    await seed_events(user_id, manifest, resolved_course_code, dry_run, plan)
     for track, module in iter_modules(manifest):
-        await upsert_module(manifest, track, module, resolved_course_code, dry_run, plan.modules)
+        await upsert_module(
+            user_id,
+            manifest,
+            track,
+            module,
+            resolved_course_code,
+            dry_run,
+            plan.modules,
+        )
     for track, module, lesson in iter_lessons(manifest):
         await upsert_lesson(
-            manifest, track, module, lesson, resolved_course_code, dry_run, plan.lessons
+            user_id,
+            manifest,
+            track,
+            module,
+            lesson,
+            resolved_course_code,
+            dry_run,
+            plan.lessons,
         )
     return plan
 

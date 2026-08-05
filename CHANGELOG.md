@@ -4,6 +4,193 @@ All notable changes to OpenStudy will be documented here.
 Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 versions follow [SemVer](https://semver.org/spec/v2.0.0.html).
 
+## v0.7.0 — Multi-tenant ready
+
+The multi-tenant migration (Phases 0-7) is complete. OpenStudy can now be
+self-hosted as single-user OR run as a multi-user platform from the same
+codebase. All credentials are per-user; the operator's bot, password, and
+chat ID never serve as fallbacks for other users.
+
+### Highlights
+
+- **Schema**: every owned table has a `user_id` FK with composite PKs/FKs
+  enforcing per-user data integrity. Cross-user FK violations are
+  structurally impossible.
+- **RLS policies**: shipped on every owned table. Inert under the current
+  BYPASSRLS connection role; flip to a non-bypass role to activate
+  defense-in-depth (see `docs/RLS.md`).
+- **Services**: every public service function takes `user_id` and filters
+  by it. Storage paths resolve under `STUDY_ROOT/<user_id>/...`.
+- **Auth**: home-grown signup + email verification + password reset.
+  Login is `email + password` only — `APP_PASSWORD_HASH` is bootstrap-only.
+- **MCP**: bearer tokens bind to user_id; tools operate on the bearer's
+  data only.
+- **Per-user secrets**: Telegram credentials live in `user_secrets`
+  (Fernet-encrypted), configured via Settings UI. No env-var fallbacks
+  for `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `TELEGRAM_WEBHOOK_SECRET`.
+- **Tests**: 318 passing (was 213 pre-migration).
+
+### Migration notes
+
+- After upgrade, run `./deploy.sh` once — it applies all 6 phase migrations
+  in order, runs `scripts/migrate_study_root.sh` (FS layout), and
+  `scripts/seed_operator_password.py` (operator password).
+- Existing operators: log in with `OPERATOR_EMAIL` (default `operator@local`)
+  + the password whose hash was in `APP_PASSWORD_HASH`. Reconfigure your
+  Telegram bot via Settings → Telegram (the env vars no longer work).
+- Self-hosters running solo: nothing changes day-to-day. You ARE the
+  operator user. Multi-user signups are gated by `SIGNUPS_ENABLED=false`
+  by default; flip it on if you want to invite others.
+
+### Deferred
+
+- Stripe billing — separate batch after this lands.
+- n8n Moodle scraper multi-tenancy — operator-only today; per-user Moodle
+  is a follow-up when first hosted user requests it.
+- Connection role flip to non-BYPASSRLS — operational; documented in
+  `docs/RLS.md`; flip when ready.
+
+## v0.7.0-pre.7 (unreleased) — Multi-tenant Phase 6
+
+### Per-user secrets
+- New `user_secrets` table (1:1 with users): `telegram_bot_token_enc bytea`, `telegram_chat_id text`, `telegram_webhook_secret_enc bytea`. Future columns reserved for Moodle, Stripe.
+- New `app/services/user_secrets.py` — encrypts on write, decrypts on read using `app/services/secrets.py` Fernet helpers.
+- `notify_telegram` MCP tool reads per-user creds; falls back to env vars for operator legacy.
+- Telegram webhook (`/internal/telegram`) routes incoming messages by chat_id → user_id lookup, sets `app.user_id` GUC for the request, dispatches commands in the caller's context.
+
+### Settings UI
+- New Telegram credentials card on the Settings page.
+- 3 new backend endpoints: `GET /api/settings/secrets` (returns masked status booleans + chat_id), `PATCH /api/settings/secrets` (per-field update + empty-string clears), `POST /api/settings/telegram/test` (sends a test message via the user's bot).
+- i18n strings (EN + DE) added under `settings.telegram.*`.
+
+### Tests
+- `tests/services/test_user_secrets.py` (6 tests) covers round-trip + partial update + clear + chat_id lookup.
+- `tests/routers/test_secrets_routes.py` (6 tests) covers the new endpoints incl. no-plaintext-leak.
+- `tests/routers/test_internal_telegram.py` (3 tests) covers webhook routing by chat_id + operator-legacy + 403 for unknown chat.
+- New tests in `tests/mcp/test_files.py` cover notify_telegram per-user creds + env fallback.
+- Suite total: 317 (was 300 at Phase 5).
+
+### Behaviour
+- After upgrade, the operator's existing Telegram env vars continue to work via fallback.
+- To migrate: operator opens Settings → Telegram, pastes bot token + chat ID + webhook secret, saves. Subsequent notify_telegram calls + webhook deliveries use the per-user creds.
+
+## End of Multi-tenant Migration (Phases 0-6)
+
+OpenStudy is now multi-tenant-capable. Phase 7 (billing) and operational concerns (Moodle scraper multi-tenancy, etc.) follow when needed.
+
+## v0.7.0-pre.6 (unreleased) — Multi-tenant Phase 5
+
+### MCP user binding
+- `app/mcp_http.OAuthTokenVerifier.verify_token` now stamps the bearer's user_id into a contextvar, and populates `AccessToken.expires_at` from the token row (Bug E).
+- `app/mcp_tools.py` (~46 tool call sites) now reads the per-request user via `_get_mcp_user_id()` instead of the global SENTINEL_USER_ID. Each MCP request now operates on its bearer's user data, not the operator's.
+
+### OAuth hardening
+- Consent flow now binds `state` + `client_id` + `code_challenge` to a signed `oauth_consent_state` cookie (HttpOnly, Secure, SameSite=Strict, 10-min TTL) issued at `/oauth/authorize` and verified at `/oauth/consent` (Bug F). Prevents same-site CSRF on the consent step.
+
+### Schema
+- Bulk-revoked all pre-Phase-5 oauth_tokens (force fresh consent so every active token has a real user_id).
+
+### Tests
+- New `tests/mcp/test_bearer_user_binding.py` proves cross-user MCP isolation + expires_at population.
+- New `tests/test_oauth_consent_csrf.py` proves consent POSTs without/with-mismatch cookie are rejected.
+- New regression in `tests/services/test_oauth.py::test_bulk_revoke_invalidates_all_tokens`.
+- Suite total: 300 (was 289 at Phase 4).
+
+## v0.7.0-pre.5 (unreleased) — Multi-tenant Phase 4
+
+### Schema
+- Per-user Row Level Security policies on every owned table. USING + WITH CHECK reference `current_setting('app.user_id', true)::uuid`.
+- Permissive policies on global tables (`oauth_clients`, `auth_attempts`).
+- `users` table policy is self-only by id.
+
+### App
+- `app/auth.py` adds a contextvar `_current_user_id`. `optional_user`/`require_user` stamp it on every authenticated request.
+- `app/db.py` issues `SELECT set_config('app.user_id', ?, true)` on every connection acquire when the contextvar is set. Inert when unset (e.g., for unauthed health checks).
+- Middleware in `app/main.py` clears the contextvar at the start of each HTTP request (defense against contextvar leakage in shared async tasks).
+
+### Behaviour (unchanged today)
+- The app currently connects as a BYPASSRLS role; policies are inert.
+- App-side `WHERE user_id = $1` filters (Phase 2) remain the active enforcement.
+- Flipping the prod connection role to a non-BYPASSRLS role activates the policies. See `docs/RLS.md`.
+
+### Tests
+- `tests/test_phase4_guc.py` — proves the contextvar reaches the GUC.
+- `tests/test_phase4_rls.py` — uses `SET LOCAL ROLE` + a non-BYPASSRLS test role to prove policies enforce.
+- Suite total: 289 (was 285 at Phase 3).
+
+## v0.7.0-pre.4 (unreleased) — Multi-tenant Phase 3
+
+### Backend
+- New `app/services/email.py` with pluggable backends: `console` (test default) and `gmail_smtp` (Gmail app-password SMTP via stdlib smtplib).
+- Email templates in `app/templates/email/` (Jinja2): verify_email + password_reset.
+- New `app/services/auth_signup.py` with signup, verify_email, request_password_reset, complete_password_reset.
+- New tables: `email_verifications` + `password_resets` (one-shot tokens with expires_at + used_at).
+- New endpoints: `POST /auth/signup` (gated by `SIGNUPS_ENABLED`), `GET /auth/verify-email`, `POST /auth/forgot-password`, `POST /auth/reset-password`.
+- `/auth/login` now accepts `email` + `password`. Operator-legacy (no email, password against `APP_PASSWORD_HASH`) retained for upgrade safety.
+- Session cookie payload upgraded to JSON `{u: user_id, iat: timestamp}`. `optional_user`/`require_user` look up `users` row by id. Legacy `b"authed"` cookies fall back to the sentinel during rollout.
+
+### Frontend
+- Login form gains an email field.
+- New routes: `/signup`, `/forgot-password`, `/reset-password`, `/verify-email`.
+- 4 new mutations/queries in `web/src/lib/queries.ts`.
+
+### Ops
+- New `scripts/seed_operator_password.py` — reads `APP_PASSWORD_HASH` env, sets `users.password_hash` for the operator if NULL. Idempotent. Invoked by `deploy.sh` after `db push`.
+- New env vars: `EMAIL_BACKEND`, `GMAIL_SMTP_USER`, `GMAIL_SMTP_APP_PASSWORD`, `EMAIL_FROM`, `EMAIL_FROM_NAME`, `SIGNUPS_ENABLED`, `PUBLIC_URL`. All have safe defaults; `EMAIL_BACKEND=console` keeps tests silent.
+
+### Tests
+- New `tests/test_integration_signup.py` (4 tests): full signup → verify → login → forgot → reset flow + signup-disabled + bad-token + no-enumeration.
+- New `tests/services/test_email.py` (3 tests) + `tests/services/test_auth_signup.py` (7 tests) + `tests/routers/test_auth_signup.py` (6 tests).
+- Suite total: 285 (was 262 at Phase 2).
+
+### Migration notes
+- After upgrade: existing operators continue to log in with their old password via the legacy fallback. Once `users.password_hash` is set (via `seed_operator_password.py` or `forgot-password` flow), the email-based login is the canonical path.
+- Operator email defaults to `operator@local` (env-configurable via `OPERATOR_EMAIL`). To change, either UPDATE `users` directly or use the forgot-password flow.
+
+## v0.7.0-pre.3 (unreleased) — Multi-tenant Phase 2
+
+### Services
+- Every service function now takes `user_id: UUID` as its first parameter.
+- All SELECTs filter via `WHERE user_id = $1`. INSERTs include user_id. UPDATEs/DELETEs constrain by user_id (defense in depth).
+- Intent layer forwards user_id to services (was accept-and-ignore in Phase 0).
+- oauth service threads user_id from `/oauth/consent` through token issuance.
+- Storage layer (`app/services/storage.py`) takes user_id and resolves paths under `STUDY_ROOT/<user_id>/...`. Path traversal is blocked at the user_root boundary.
+- file_index search filters by user_id; index_all stays operator-scoped and walks per-user directories.
+
+### Schema
+- Dropped sentinel `DEFAULT` on every owned table's user_id column. INSERTs must now supply user_id explicitly; absence raises a NOT NULL violation rather than silently using the operator.
+
+### Tests
+- New `tests/test_phase2_isolation.py` (4 tests) proves the service filters genuinely isolate data between two users.
+- Coverage tests in storage + file_index for cross-user traversal blocking and operator-scoped reindex.
+- Suite total: 262 (was 255 at Phase 1).
+
+### Behaviour
+- App still operates single-tenant at the entry points — routers + MCP tools pass the sentinel UUID. Phase 3 (signup endpoints) makes user identity real via the session cookie.
+
+## v0.7.0-pre.2 (unreleased) — Multi-tenant Phase 1
+
+### Schema
+- New `users` table with operator seed row (sentinel UUID, "operator@local").
+- Every owned table now has `user_id NOT NULL FK to users(id) ON DELETE CASCADE` with a sentinel DEFAULT — Phase 0 services continue to work unchanged.
+- Composite PKs and FKs lock per-user data integrity: `courses` PK is `(user_id, code)`; downstream FKs use `(user_id, course_code) → courses(user_id, code)`. Two users can have the same course code.
+- `app_settings` is 1:1 with `users` (PK `user_id`, singleton constraint dropped, `id` column removed).
+- TOTP secret moved from `app_settings` to `users` (audit §6). `app_settings.totp_*` columns retained for rollback safety.
+- `file_index.path` prefixed with `<user_id>/`; idempotent.
+- `events.user_id` populated by the `log_table_change()` trigger.
+- `events.user_id` FK to users dropped — audit logs survive cascade deletes (same precedent as Phase 0's `events.course_code` drop).
+
+### Behaviour (unchanged)
+- App still operates single-tenant via the Phase 0 sentinel. Phase 2 wires services to filter by user_id; until then every INSERT uses the DEFAULT.
+
+### Ops
+- New env vars (optional, default to sentinel): `OPERATOR_USER_ID`, `OPERATOR_EMAIL`, `OPERATOR_DISPLAY_NAME`.
+- `./deploy.sh` invokes `scripts/migrate_study_root.sh` after `db push` to move course folders into the operator subdirectory.
+
+### Tests
+- New `tests/test_phase1_schema.py` (4 tests) locks cascade-delete + composite-FK invariants.
+- Suite total: 255 (was 250 at Phase 0).
+
 ## [v0.6.0] — 2026-04-29
 
 **Internal hardening.** No user-visible feature changes. The PostgREST

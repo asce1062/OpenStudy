@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pytest
+from app.auth import SENTINEL_USER_ID
 
 from tests.mcp._harness import get_tool_fn
 
@@ -9,13 +10,15 @@ from tests.mcp._harness import get_tool_fn
 async def test_generate_daily_agenda_tool_returns_items(client, db_conn, mcp_server):
     async with db_conn.connection() as conn, conn.cursor() as cur:
         await cur.execute(
-            "INSERT INTO courses (code, full_name) VALUES ('MCPA', 'MCP Agenda')"
+            "INSERT INTO courses (user_id, code, full_name) VALUES (%s, 'MCPA', 'MCP Agenda')",
+            (SENTINEL_USER_ID,),
         )
         await cur.execute(
             """
-            INSERT INTO study_topics (course_code, name, status, sort_order)
-            VALUES ('MCPA', 'MCP topic', 'not_started', 1)
-            """
+            INSERT INTO study_topics (user_id, course_code, name, status, sort_order)
+            VALUES (%s, 'MCPA', 'MCP topic', 'not_started', 1)
+            """,
+            (SENTINEL_USER_ID,),
         )
 
     generate_daily_agenda = get_tool_fn(mcp_server, "generate_daily_agenda")
@@ -31,13 +34,15 @@ async def test_generate_daily_agenda_tool_returns_items(client, db_conn, mcp_ser
 async def test_complete_agenda_item_tool_updates_source(client, db_conn, mcp_server):
     async with db_conn.connection() as conn, conn.cursor() as cur:
         await cur.execute(
-            "INSERT INTO courses (code, full_name) VALUES ('MCPB', 'MCP Agenda Actions')"
+            "INSERT INTO courses (user_id, code, full_name) VALUES (%s, 'MCPB', 'MCP Agenda Actions')",
+            (SENTINEL_USER_ID,),
         )
         await cur.execute(
             """
-            INSERT INTO study_topics (course_code, name, status, sort_order)
-            VALUES ('MCPB', 'MCP action topic', 'not_started', 1)
-            """
+            INSERT INTO study_topics (user_id, course_code, name, status, sort_order)
+            VALUES (%s, 'MCPB', 'MCP action topic', 'not_started', 1)
+            """,
+            (SENTINEL_USER_ID,),
         )
 
     generate_daily_agenda = get_tool_fn(mcp_server, "generate_daily_agenda")
@@ -69,13 +74,15 @@ async def test_complete_agenda_item_tool_updates_source(client, db_conn, mcp_ser
 async def test_skip_and_snooze_agenda_item_tools_record_events(client, db_conn, mcp_server):
     async with db_conn.connection() as conn, conn.cursor() as cur:
         await cur.execute(
-            "INSERT INTO courses (code, full_name) VALUES ('MCPC', 'MCP Agenda Events')"
+            "INSERT INTO courses (user_id, code, full_name) VALUES (%s, 'MCPC', 'MCP Agenda Events')",
+            (SENTINEL_USER_ID,),
         )
         await cur.execute(
             """
-            INSERT INTO study_topics (course_code, name, status, sort_order)
-            VALUES ('MCPC', 'MCP skip topic', 'not_started', 1)
-            """
+            INSERT INTO study_topics (user_id, course_code, name, status, sort_order)
+            VALUES (%s, 'MCPC', 'MCP skip topic', 'not_started', 1)
+            """,
+            (SENTINEL_USER_ID,),
         )
 
     generate_daily_agenda = get_tool_fn(mcp_server, "generate_daily_agenda")

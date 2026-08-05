@@ -2,7 +2,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends
 
-from ..auth import require_auth
+from ..auth import User, require_user
 from ..schemas import (
     AgendaActionRequest,
     AgendaActionResponse,
@@ -17,9 +17,9 @@ router = APIRouter(prefix="/agenda", tags=["agenda"])
 @router.get("/today", response_model=DailyAgenda)
 async def today(
     course_code: Optional[str] = None,
-    _: bool = Depends(require_auth),
+    user: User = Depends(require_user),
 ) -> DailyAgenda:
-    return await agenda_svc.generate_daily_agenda(course_code=course_code)
+    return await agenda_svc.generate_daily_agenda(user.id, course_code=course_code)
 
 
 @router.post("/items/{agenda_item_id}/complete", response_model=AgendaActionResponse)
@@ -27,9 +27,10 @@ async def complete_item(
     agenda_item_id: str,
     body: AgendaActionRequest,
     include_agenda: bool = False,
-    _: bool = Depends(require_auth),
+    user: User = Depends(require_user),
 ) -> AgendaActionResponse:
     return await agenda_svc.complete_agenda_item(
+        user.id,
         agenda_item_id,
         body,
         include_agenda=include_agenda,
@@ -41,9 +42,10 @@ async def skip_item(
     agenda_item_id: str,
     body: AgendaActionRequest,
     include_agenda: bool = False,
-    _: bool = Depends(require_auth),
+    user: User = Depends(require_user),
 ) -> AgendaActionResponse:
     return await agenda_svc.skip_agenda_item(
+        user.id,
         agenda_item_id,
         body,
         include_agenda=include_agenda,
@@ -55,9 +57,10 @@ async def snooze_item(
     agenda_item_id: str,
     body: AgendaActionRequest,
     include_agenda: bool = False,
-    _: bool = Depends(require_auth),
+    user: User = Depends(require_user),
 ) -> AgendaActionResponse:
     return await agenda_svc.snooze_agenda_item(
+        user.id,
         agenda_item_id,
         body,
         include_agenda=include_agenda,
@@ -69,9 +72,10 @@ async def log_result(
     agenda_item_id: str,
     body: AgendaResultRequest,
     include_agenda: bool = False,
-    _: bool = Depends(require_auth),
+    user: User = Depends(require_user),
 ) -> AgendaActionResponse:
     return await agenda_svc.log_agenda_result(
+        user.id,
         agenda_item_id,
         body,
         include_agenda=include_agenda,

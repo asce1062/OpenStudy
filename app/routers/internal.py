@@ -5,27 +5,22 @@ via `INTERNAL_API_SECRET`). Used by background jobs (n8n workflows, cron
 scripts) to trigger server-side actions like reindexing or to deliver
 inbound webhooks.
 
-The `/telegram` endpoint is special: it's authenticated by Telegram's own
-`X-Telegram-Bot-Api-Secret-Token` header instead of the shared secret.
+The `/telegram` endpoint is special: it's authenticated by per-user
+`X-Telegram-Bot-Api-Secret-Token` headers (stored in user_secrets), not
+the shared secret. Each user runs their own bot.
 """
 import logging
 import os
-from pathlib import Path
 
-import httpx
 from fastapi import APIRouter, BackgroundTasks, Header, HTTPException, Request, status
 
+from ..auth import set_current_user_id
 from ..services import file_index as file_index_svc
+from ..services import telegram as telegram_svc
+from ..services import user_secrets as user_secrets_svc
 
 router = APIRouter(prefix="/internal", tags=["internal"])
 log = logging.getLogger(__name__)
-
-# Shared pause flag for the Moodle scrape cron. Lives on the bind-mounted
-# course-files directory so both this container and the n8n container can
-# see it (n8n sees the same file at /var/courses/.moodle_cron_paused).
-# When present, n8n's schedule-triggered runs skip the scrape; manual /sync
-# via webhook always runs regardless.
-PAUSE_FLAG = Path(os.environ.get("STUDY_ROOT", "/opt/courses")) / ".moodle_cron_paused"
 
 
 def _check_secret(provided: str | None) -> None:
@@ -79,13 +74,6 @@ def trigger_index(
     return {"ok": True, "queued": "reindex"}
 
 
-async def _send_telegram(token: str, chat_id: int, text: str) -> None:
-    async with httpx.AsyncClient(timeout=10) as client:
-        await client.post(
-            f"https://api.telegram.org/bot{token}/sendMessage",
-            json={"chat_id": chat_id, "text": text, "disable_web_page_preview": True},
-        )
-
 
 @router.post("/telegram")
 async def telegram_webhook(
@@ -96,11 +84,13 @@ async def telegram_webhook(
 
     Authenticated by Telegram's own `X-Telegram-Bot-Api-Secret-Token` header,
     which Telegram includes on every webhook delivery if we set it via setWebhook.
-    """
-    expected = os.environ.get("TELEGRAM_WEBHOOK_SECRET", "").strip()
-    if not expected or x_telegram_bot_api_secret_token != expected:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="bad webhook token")
 
+    Multi-tenant: each user runs their own bot with their own webhook secret.
+    We extract the chat.id from the payload, resolve it to a user via
+    `user_secrets.telegram_chat_id`, then verify the inbound header against
+    that user's `telegram_webhook_secret`. No env fallback for any of the
+    credentials — operator and user secrets are isolated.
+    """
     body = await request.json()
     msg = body.get("message") or {}
     chat_id = (msg.get("chat") or {}).get("id")
@@ -109,73 +99,33 @@ async def telegram_webhook(
     if not chat_id or not text:
         return {"ok": True}
 
-    # Allowlist: only respond to the operator's own chat (TELEGRAM_CHAT_ID)
-    allowed = int(os.environ.get("TELEGRAM_CHAT_ID", "0") or "0")
-    if chat_id != allowed:
-        log.warning("telegram webhook from unauthorised chat_id=%s", chat_id)
-        return {"ok": True}  # silent ignore
+    # Resolve chat_id -> user_id BEFORE trusting anything in the payload.
+    user_id = await user_secrets_svc.get_user_id_by_chat_id(str(chat_id))
+    if user_id is None:
+        log.warning("telegram webhook from unrecognised chat_id=%s", chat_id)
+        raise HTTPException(status.HTTP_403_FORBIDDEN, detail="unknown telegram chat")
 
-    token = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
-    if not token:
-        return {"ok": False, "reason": "no bot token configured"}
+    # Verify the inbound secret token against THIS user's stored secret.
+    secrets = await user_secrets_svc.get_secrets(user_id)
+    expected = (secrets.telegram_webhook_secret or "").strip()
+    if not expected or x_telegram_bot_api_secret_token != expected:
+        log.warning("telegram webhook secret mismatch for user_id=%s", user_id)
+        raise HTTPException(status.HTTP_403_FORBIDDEN, detail="bad webhook token")
 
-    cmd = text.split()[0].lower()
+    # Stamp the resolved user onto the per-request contextvar so GUC / RLS
+    # applies to any DB calls inside handle_command.
+    set_current_user_id(user_id)
 
-    if cmd in ("/start", "/help"):
-        state = "⏸ paused" if PAUSE_FLAG.exists() else "▶ active"
-        await _send_telegram(token, chat_id,
-            "Available commands:\n"
-            "/sync — pull new files from Moodle now (~8s, works whether paused or not)\n"
-            "/pause — pause the 30-min auto-cron\n"
-            "/resume — re-enable the 30-min auto-cron\n"
-            "/status — show cron state\n"
-            "/help — this message\n"
-            "\n"
-            f"Cron currently: {state}"
-        )
-    elif cmd == "/sync":
-        webhook_url = os.environ.get("N8N_MOODLE_WEBHOOK_URL", "").strip()
-        if not webhook_url:
-            await _send_telegram(token, chat_id,
-                "Sync unavailable: N8N_MOODLE_WEBHOOK_URL is not configured.")
-            return {"ok": True}
-        # The n8n workflow sends its own rich HTML summary at the end of the
-        # run (same format as the scheduled cron). Bot stays quiet on success
-        # to avoid a redundant short summary; only "🔄 Syncing…" up front for
-        # instant feedback, plus error handling if the webhook itself breaks.
-        await _send_telegram(token, chat_id, "🔄 Syncing with Moodle…")
-        try:
-            async with httpx.AsyncClient(timeout=120) as client:
-                resp = await client.get(webhook_url)
-            if resp.status_code >= 400:
-                await _send_telegram(token, chat_id,
-                    f"❌ Sync webhook returned HTTP {resp.status_code}")
-        except Exception as exc:
-            await _send_telegram(token, chat_id, f"❌ Sync failed: {exc}")
-    elif cmd == "/pause":
-        try:
-            PAUSE_FLAG.parent.mkdir(parents=True, exist_ok=True)
-            PAUSE_FLAG.touch()
-            await _send_telegram(token, chat_id,
-                "⏸ Moodle cron paused. The 30-min auto-cron is suspended.\n"
-                "Use /sync to scrape now, /resume to re-enable.")
-        except Exception as exc:
-            await _send_telegram(token, chat_id, f"❌ Could not write pause flag: {exc}")
-    elif cmd == "/resume":
-        try:
-            PAUSE_FLAG.unlink(missing_ok=True)
-            await _send_telegram(token, chat_id,
-                "▶ Moodle cron resumed. Will fire on the next 30-min interval.")
-        except Exception as exc:
-            await _send_telegram(token, chat_id, f"❌ Could not remove pause flag: {exc}")
-    elif cmd == "/status":
-        paused = PAUSE_FLAG.exists()
-        state = "⏸ paused" if paused else "▶ active"
-        flag_info = f"flag at {PAUSE_FLAG}" if paused else "no pause flag"
-        await _send_telegram(token, chat_id,
-            f"📊 Moodle cron: {state}\n{flag_info}"
-        )
-    else:
-        await _send_telegram(token, chat_id, f"Unknown command: {cmd}\nTry /help")
+    reply = await telegram_svc.handle_command(text, chat_id=chat_id, user_id=user_id)
+
+    # Send the reply using the user's own bot token. If they haven't set
+    # one, the command may have completed but the user won't see a reply —
+    # log a warning and move on rather than borrow another tenant's bot.
+    if reply:
+        token = (secrets.telegram_bot_token or "").strip()
+        if token:
+            await telegram_svc.send_message(token, chat_id, reply)
+        else:
+            log.warning("no telegram bot token for user_id=%s; dropping reply", user_id)
 
     return {"ok": True}

@@ -13,8 +13,11 @@ import os
 import shutil
 from pathlib import Path
 from typing import Any
+from uuid import UUID
 
 import yaml
+
+from ..config import get_settings
 
 log = logging.getLogger(__name__)
 
@@ -104,12 +107,13 @@ def _copy_if_needed(source: Path, destination: Path) -> str:
 
 def sync_packaged_curriculum_assets(
     *,
+    user_id: UUID,
     manifest_path: Path | None = None,
     sources_root: Path | None = None,
     study_root: Path | None = None,
     destination_prefix: str | None = None,
 ) -> dict[str, Any]:
-    """Copy packaged manifest assets into `STUDY_ROOT`.
+    """Copy packaged manifest assets into `STUDY_ROOT/<user_id>`.
 
     The operation is deterministic and idempotent: destination paths are
     derived from the manifest asset list sorted by ID, and files are replaced
@@ -118,6 +122,7 @@ def sync_packaged_curriculum_assets(
     manifest_path = manifest_path or _packaged_manifest_path()
     sources_root = sources_root or _packaged_sources_root()
     study_root = study_root or _study_root()
+    user_root = _safe_child(study_root, str(user_id))
     destination_prefix = (
         destination_prefix.strip().strip("/")
         if destination_prefix is not None
@@ -174,10 +179,12 @@ def sync_packaged_curriculum_assets(
             summary["missing"].append(str(asset.get("id") or source or "unknown"))
             continue
 
-        destination = _safe_child(study_root, f"{destination_prefix}/{source.name}")
+        destination = _safe_child(
+            user_root, f"{destination_prefix}/{source.name}"
+        )
         action = _copy_if_needed(source, destination)
         summary[action] += 1
-        summary["files"].append(str(destination.relative_to(study_root.resolve())))
+        summary["files"].append(str(destination.relative_to(user_root.resolve())))
 
     return summary
 
@@ -189,7 +196,10 @@ async def sync_packaged_curriculum_assets_on_startup() -> dict[str, Any] | None:
         return None
 
     try:
-        summary = await asyncio.to_thread(sync_packaged_curriculum_assets)
+        summary = await asyncio.to_thread(
+            sync_packaged_curriculum_assets,
+            user_id=UUID(get_settings().operator_user_id),
+        )
     except Exception as exc:
         log.warning("packaged curriculum asset sync failed: %s", exc)
         return {"enabled": False, "error": str(exc)}
