@@ -1,8 +1,10 @@
 # Deployment
 
-Curriculum seeding is a post-deploy operation. Deploy the OpenStudy app, run
-database migrations, verify health, then validate, dry-run, and apply the
-curriculum seed from the prebuilt manifest.
+Deploy OpenStudy, run database migrations, reconcile the operator account,
+verify health and login, then dry-run and apply the curriculum seed when the
+manifest changed. Coolify operators should follow the canonical
+[Coolify runbook](./coolify.md), which includes the current environment,
+user-scoped storage migration, and password replacement procedure.
 
 ## Existing Deployment Flow
 
@@ -13,8 +15,14 @@ The repository already provides:
 ```
 
 `deploy.sh` validates Docker Compose, builds images, starts Postgres, runs
-migrations through `scripts/run_migrations.py`, starts the app and frontend,
-then polls `/api/health`. It also tags the previous image for rollback.
+migrations through `scripts/run_migrations.py`, migrates legacy course storage,
+reconciles the operator through `scripts/seed_operator_password.py`, starts the
+app and frontend, then polls `/api/health`. It also tags the previous image for
+rollback.
+
+Coolify's normal Compose deployment does not invoke `deploy.sh`; its migration,
+storage, and operator-bootstrap commands must be run explicitly as documented
+in [Coolify Deployment](./coolify.md).
 
 The curriculum helper does not replace this. It runs after deployment.
 
@@ -89,9 +97,16 @@ Required runtime values:
 POSTGRES_USER=openstudy
 POSTGRES_PASSWORD=<strong-password>
 POSTGRES_DB=openstudy
+OPERATOR_USER_ID=00000000-0000-0000-0000-000000000001
+OPERATOR_EMAIL=you@example.com
+OPERATOR_DISPLAY_NAME=Your Name
 APP_PASSWORD_HASH=<argon2id-password-hash>
 SESSION_SECRET=<random-session-secret>
+SECRETS_ENCRYPTION_KEY=<persistent-fernet-key>
 PUBLIC_BASE_URL=https://learn.alexmbugua.me
+PUBLIC_URL=https://learn.alexmbugua.me
+SIGNUPS_ENABLED=false
+EMAIL_BACKEND=console
 ```
 
 Optional runtime/build values:
@@ -107,7 +122,9 @@ PYTHONUNBUFFERED=1
 
 `PUBLIC_BASE_URL` is used by the backend for OAuth/MCP discovery URLs and
 `WWW-Authenticate` metadata. The `PUBLIC_SITE_*` values are used by the
-frontend build, not the curriculum seed.
+frontend build, not the curriculum seed. Login uses `OPERATOR_EMAIL` and the
+plaintext password corresponding to `APP_PASSWORD_HASH`; the hash itself is
+never entered in the login form.
 
 ## Local Production-Like Test
 
@@ -168,12 +185,17 @@ Also back up any file storage under `/opt/courses` if you have learner files.
 ## Common Mistakes
 
 - Running the seed helper before migrations.
+- Assuming a Coolify Compose redeploy automatically invokes `deploy.sh`.
+- Changing `APP_PASSWORD_HASH` and expecting the bootstrap script to overwrite
+  an existing database password; use the current password procedure in
+  [Coolify Deployment](./coolify.md).
 - Running from the host without DB environment variables.
 - Forgetting `--dry-run` before production seed.
 - Running production seeding without `--skip-generate`.
 - Defining custom Compose networks in Coolify and causing proxy 504s.
 - Assuming packaging flashcard assets into `/app/curriculum/sources` is enough.
-  They must also be synced into `/opt/courses/interview-engineering/resources/flashcards`
-  before the Files pane and MCP file tools can see them; backend startup handles
-  this when `OPENSTUDY_PACKAGED_CURRICULUM=1`.
+  They must also be synced into
+  `/opt/courses/<user-id>/interview-engineering/resources/flashcards` before
+  the Files pane and MCP file tools can see them; backend startup handles this
+  when `OPENSTUDY_PACKAGED_CURRICULUM=1`.
 - Rolling back the container and assuming database seed changes rolled back too.
