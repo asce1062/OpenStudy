@@ -21,9 +21,11 @@ after deployment without hand-editing database rows.
   modules, lessons, assets, and schema checks.
 - [Seeding OpenStudy](./seeding-openstudy.md): deterministic DB import,
   idempotency, dry runs, and metadata persistence.
-- [Deployment](./deployment.md): Docker deployment and post-deploy seed flow.
-- [Coolify](./coolify.md): Git-based deployment, env vars, volumes, logs, and
-  manual seeding.
+- [Deployment](./deployment.md): platform-neutral deployment and curriculum
+  seed lifecycle.
+- [Coolify](./coolify.md): canonical current-state environment, migrations,
+  operator email login, password replacement, storage, networking, and seed
+  operations.
 - [Domain and SSL](./domain-and-ssl.md): `learn.alexmbugua.me` example, DNS,
   reverse proxy, TLS, and health checks.
 - [Developer Workflow](./developer-workflow.md): local commands, tests, linting,

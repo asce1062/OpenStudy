@@ -153,4 +153,8 @@ deployment network and route Traefik to the `frontend` service on exposed
 internal port `80`.
 
 Deployment remains the responsibility of `deploy.sh`, Docker Compose, or the
-hosting platform. Curriculum seeding is a post-deploy operation.
+hosting platform. `deploy.sh` owns migrations and operator reconciliation for
+host-managed Compose deployments; Coolify's Compose flow requires those
+operations to be run explicitly. Curriculum seeding remains a post-deploy
+operation. See [Coolify Deployment](./coolify.md) for the authoritative hosted
+runbook.

@@ -66,13 +66,13 @@ OpenStudy does not use this value as the browser path. The startup sync copies
 packaged flashcard files into:
 
 ```text
-STUDY_ROOT/interview-engineering/resources/flashcards/
+STUDY_ROOT/<user-id>/interview-engineering/resources/flashcards/
 ```
 
 With the default deployment this resolves to:
 
 ```text
-/opt/courses/interview-engineering/resources/flashcards/
+/opt/courses/<user-id>/interview-engineering/resources/flashcards/
 ```
 
 That location is what the dashboard Files pane and MCP `list_course_files`
@@ -145,7 +145,7 @@ PACKAGED_CURRICULUM_ASSETS_ROOT=/app/curriculum/sources
 to:
 
 ```text
-/opt/courses/interview-engineering/resources/flashcards/
+/opt/courses/<user-id>/interview-engineering/resources/flashcards/
 ```
 
 The sync is idempotent. It copies only manifest assets with `format: apkg` or
