@@ -1,12 +1,12 @@
 from fastapi import APIRouter, Depends
 
-from ..auth import require_auth
+from ..auth import require_user, User
 from ..schemas import DashboardSummary
-from ..services.dashboard import get_dashboard_summary
+from ..intents import dashboard as intent
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
 
 @router.get("", response_model=DashboardSummary)
-async def dashboard(_: bool = Depends(require_auth)) -> DashboardSummary:
-    return await get_dashboard_summary()
+async def dashboard(user: User = Depends(require_user)) -> DashboardSummary:
+    return await intent.get_dashboard_summary(user.id)

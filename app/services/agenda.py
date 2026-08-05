@@ -10,6 +10,7 @@ import re
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, time, timezone
 from typing import Any
+from uuid import UUID
 from zoneinfo import ZoneInfo
 
 from ..schemas import (
@@ -75,8 +76,8 @@ def _end_of_day(target_date: date) -> datetime:
     return datetime.combine(target_date, time(23, 59, 59), tzinfo=timezone.utc)
 
 
-async def _local_now() -> datetime:
-    settings = await settings_svc.get_settings()
+async def _local_now(user_id: UUID) -> datetime:
+    settings = await settings_svc.get_settings(user_id)
     try:
         tz = ZoneInfo(settings.timezone or "UTC")
     except Exception:
@@ -154,6 +155,7 @@ def _source_key(source_ref: dict[str, Any]) -> str:
 
 
 async def _source_course_code(
+    user_id: UUID,
     source_ref: dict[str, Any],
     fallback: str | None = None,
 ) -> str | None:
@@ -181,15 +183,15 @@ async def _source_course_code(
         return fallback
 
     if source_type == "study_topic":
-        for topic in await topics_svc.list_study_topics():
+        for topic in await topics_svc.list_study_topics(user_id):
             if topic.id == source_id:
                 return topic.course_code
     if source_type == "task":
-        for task in await tasks_svc.list_tasks():
+        for task in await tasks_svc.list_tasks(user_id):
             if task.id == source_id:
                 return task.course_code
     if source_type == "deliverable":
-        for deliverable in await deliverables_svc.list_deliverables():
+        for deliverable in await deliverables_svc.list_deliverables(user_id):
             if deliverable.id == source_id:
                 return deliverable.course_code
     return fallback
@@ -834,10 +836,12 @@ def _timed_exercise_candidate(
     )
 
 
-async def _flashcard_candidate(target_date: date, course_code: str | None) -> _Candidate | None:
+async def _flashcard_candidate(
+    user_id: UUID, target_date: date, course_code: str | None
+) -> _Candidate | None:
     if course_code and course_code not in {"IE", "INTENG"}:
         return None
-    entries = await storage_svc.list_files(FLASHCARD_PREFIX, limit=100)
+    entries = await storage_svc.list_files(user_id, FLASHCARD_PREFIX, limit=100)
     files = [entry for entry in entries if entry.get("id") is not None]
     if not files:
         return None
@@ -865,17 +869,20 @@ async def _flashcard_candidate(target_date: date, course_code: str | None) -> _C
 
 async def _suppressed_source_keys(
     *,
+    user_id: UUID,
     target_date: date,
     course_code: str | None,
     now: datetime,
 ) -> set[str]:
     suppressed: set[str] = set()
     skipped = await events_svc.list_events(
+        user_id,
         kind=ACTION_EVENT_KIND["skipped"],
         course_code=course_code,
         limit=200,
     )
     snoozed = await events_svc.list_events(
+        user_id,
         kind=ACTION_EVENT_KIND["snoozed"],
         course_code=course_code,
         limit=200,
@@ -956,24 +963,27 @@ def _best_by_category(candidates: list[_Candidate]) -> list[_Candidate]:
 
 
 async def generate_daily_agenda(
+    user_id: UUID,
     *,
     target_date: date | None = None,
     course_code: str | None = None,
     now: datetime | None = None,
 ) -> DailyAgenda:
-    local_now = await _local_now()
+    local_now = await _local_now(user_id)
     target_date = target_date or local_now.date()
     normalized_course = course_code.upper() if course_code else None
     now = now or datetime.combine(target_date, time(12, 0), tzinfo=timezone.utc)
 
-    courses = await courses_svc.list_courses()
-    slots = await slots_svc.list_slots(course_code=normalized_course)
-    exams = _course_filter(await exams_svc.list_exams(), normalized_course)
-    topics = await topics_svc.list_study_topics(course_code=normalized_course)
-    deliverables = await deliverables_svc.list_deliverables(course_code=normalized_course)
-    tasks = await tasks_svc.list_tasks(course_code=normalized_course)
-    await lectures_svc.list_lectures(course_code=normalized_course)
-    await events_svc.list_events(course_code=normalized_course, limit=50)
+    courses = await courses_svc.list_courses(user_id)
+    slots = await slots_svc.list_slots(user_id, course_code=normalized_course)
+    exams = _course_filter(await exams_svc.list_exams(user_id), normalized_course)
+    topics = await topics_svc.list_study_topics(user_id, course_code=normalized_course)
+    deliverables = await deliverables_svc.list_deliverables(
+        user_id, course_code=normalized_course
+    )
+    tasks = await tasks_svc.list_tasks(user_id, course_code=normalized_course)
+    await lectures_svc.list_lectures(user_id, course_code=normalized_course)
+    await events_svc.list_events(user_id, course_code=normalized_course, limit=50)
 
     filtered_courses = (
         [course for course in courses if course.code == normalized_course]
@@ -1010,12 +1020,13 @@ async def generate_daily_agenda(
             topics=topics,
         ),
         _new_concept_candidate(target_date=target_date, topics=topics, tasks=tasks),
-        await _flashcard_candidate(target_date, normalized_course),
+        await _flashcard_candidate(user_id, target_date, normalized_course),
     ):
         if candidate is not None:
             candidates.append(candidate)
 
     suppressed = await _suppressed_source_keys(
+        user_id=user_id,
         target_date=target_date,
         course_code=normalized_course,
         now=now,
@@ -1034,13 +1045,16 @@ async def generate_daily_agenda(
 
 
 async def resolve_agenda_item(
+    user_id: UUID,
     agenda_item_id: str,
     source_ref: dict[str, Any] | None = None,
     *,
     course_code: str | None = None,
 ) -> AgendaItem:
     if source_ref is not None:
-        item_date = parse_agenda_item_date(agenda_item_id) or (await _local_now()).date()
+        item_date = parse_agenda_item_date(agenda_item_id) or (
+            await _local_now(user_id)
+        ).date()
         return _agenda_item(
             target_date=item_date,
             kind=agenda_item_id.split("-", 4)[4].rsplit("-", 1)[0]
@@ -1055,7 +1069,9 @@ async def resolve_agenda_item(
         )
 
     item_date = parse_agenda_item_date(agenda_item_id)
-    agenda = await generate_daily_agenda(target_date=item_date, course_code=course_code)
+    agenda = await generate_daily_agenda(
+        user_id, target_date=item_date, course_code=course_code
+    )
     for item in agenda.items:
         if item.id == agenda_item_id:
             return item
@@ -1068,6 +1084,7 @@ def _request_payload(request: AgendaActionRequest | AgendaResultRequest) -> dict
 
 async def _record_action_event(
     *,
+    user_id: UUID,
     agenda_item_id: str,
     outcome: str,
     source_ref: dict[str, Any],
@@ -1078,13 +1095,18 @@ async def _record_action_event(
 ) -> str:
     payload = {
         "agenda_item_id": agenda_item_id,
-        "agenda_date": (target_date or parse_agenda_item_date(agenda_item_id) or (await _local_now()).date()).isoformat(),
+        "agenda_date": (
+            target_date
+            or parse_agenda_item_date(agenda_item_id)
+            or (await _local_now(user_id)).date()
+        ).isoformat(),
         "outcome": outcome,
         "source_ref": source_ref,
         "mutations_applied": mutations_applied,
         **_request_payload(request),
     }
     event = await events_svc.record_event(
+        user_id,
         EventCreate(
             kind=ACTION_EVENT_KIND.get(outcome, "agenda:result"),
             course_code=course_code,
@@ -1096,6 +1118,7 @@ async def _record_action_event(
 
 async def apply_agenda_result_to_source(
     *,
+    user_id: UUID,
     agenda_item_id: str,
     item_kind: str,
     source_ref: dict[str, Any],
@@ -1111,7 +1134,11 @@ async def apply_agenda_result_to_source(
         topic_id = source_ref.get("id")
         if isinstance(topic_id, str):
             topic = next(
-                (item for item in await topics_svc.list_study_topics() if item.id == topic_id),
+                (
+                    item
+                    for item in await topics_svc.list_study_topics(user_id)
+                    if item.id == topic_id
+                ),
                 None,
             )
             retry_count = topic.retry_count if topic is not None else 0
@@ -1127,6 +1154,7 @@ async def apply_agenda_result_to_source(
                 )
             )
             await topics_svc.update_study_topic(
+                user_id,
                 topic_id,
                 StudyTopicPatch(
                     status=status,  # type: ignore[arg-type]
@@ -1152,7 +1180,11 @@ async def apply_agenda_result_to_source(
         topic_id = source_ref.get("topic_id")
         if isinstance(topic_id, str):
             topic = next(
-                (item for item in await topics_svc.list_study_topics() if item.id == topic_id),
+                (
+                    item
+                    for item in await topics_svc.list_study_topics(user_id)
+                    if item.id == topic_id
+                ),
                 None,
             )
             retry_count = topic.retry_count if topic is not None else 0
@@ -1168,6 +1200,7 @@ async def apply_agenda_result_to_source(
                 )
             )
             await topics_svc.update_study_topic(
+                user_id,
                 topic_id,
                 StudyTopicPatch(
                     status=status,  # type: ignore[arg-type]
@@ -1194,6 +1227,7 @@ async def apply_agenda_result_to_source(
         if isinstance(task_id, str):
             if source_ref.get("mastery_state") or item_kind in {"new_exposure", "retry"}:
                 await tasks_svc.update_task(
+                    user_id,
                     task_id,
                     TaskPatch(
                         mastery_state=_mastery_patch_for_result(
@@ -1211,7 +1245,7 @@ async def apply_agenda_result_to_source(
                 )
                 mutations.append("task:mastery_state")
             else:
-                await tasks_svc.complete_task(task_id)
+                await tasks_svc.complete_task(user_id, task_id)
                 mutations.append("task:done")
     elif source_type in {"deliverable", "course_files", "agenda_synthesis", "exam"}:
         return []
@@ -1231,6 +1265,7 @@ def _snooze_until(request: AgendaActionRequest, now: datetime | None = None) -> 
 
 async def _action_response(
     *,
+    user_id: UUID,
     agenda_item_id: str,
     outcome: str,
     request: AgendaActionRequest | AgendaResultRequest,
@@ -1243,7 +1278,9 @@ async def _action_response(
     target_date: date | None,
 ) -> AgendaActionResponse:
     refreshed = (
-        await generate_daily_agenda(target_date=target_date, course_code=course_code)
+        await generate_daily_agenda(
+            user_id, target_date=target_date, course_code=course_code
+        )
         if include_agenda
         else None
     )
@@ -1260,17 +1297,19 @@ async def _action_response(
 
 
 async def complete_agenda_item(
+    user_id: UUID,
     agenda_item_id: str,
     request: AgendaActionRequest | None = None,
     *,
     include_agenda: bool = False,
 ) -> AgendaActionResponse:
     request = request or AgendaActionRequest()
-    item = await resolve_agenda_item(agenda_item_id, request.source_ref)
+    item = await resolve_agenda_item(user_id, agenda_item_id, request.source_ref)
     source_ref = request.source_ref or item.source_ref
     target_date = parse_agenda_item_date(agenda_item_id)
-    course_code = await _source_course_code(source_ref, item.course_code)
+    course_code = await _source_course_code(user_id, source_ref, item.course_code)
     mutations = await apply_agenda_result_to_source(
+        user_id=user_id,
         agenda_item_id=agenda_item_id,
         item_kind=item.kind,
         source_ref=source_ref,
@@ -1278,6 +1317,7 @@ async def complete_agenda_item(
         outcome="completed",
     )
     event_id = await _record_action_event(
+        user_id=user_id,
         agenda_item_id=agenda_item_id,
         outcome="completed",
         source_ref=source_ref,
@@ -1287,6 +1327,7 @@ async def complete_agenda_item(
         target_date=target_date,
     )
     return await _action_response(
+        user_id=user_id,
         agenda_item_id=agenda_item_id,
         outcome="completed",
         request=request,
@@ -1301,17 +1342,19 @@ async def complete_agenda_item(
 
 
 async def skip_agenda_item(
+    user_id: UUID,
     agenda_item_id: str,
     request: AgendaActionRequest | None = None,
     *,
     include_agenda: bool = False,
 ) -> AgendaActionResponse:
     request = request or AgendaActionRequest()
-    item = await resolve_agenda_item(agenda_item_id, request.source_ref)
+    item = await resolve_agenda_item(user_id, agenda_item_id, request.source_ref)
     source_ref = request.source_ref or item.source_ref
     target_date = parse_agenda_item_date(agenda_item_id)
-    course_code = await _source_course_code(source_ref, item.course_code)
+    course_code = await _source_course_code(user_id, source_ref, item.course_code)
     event_id = await _record_action_event(
+        user_id=user_id,
         agenda_item_id=agenda_item_id,
         outcome="skipped",
         source_ref=source_ref,
@@ -1321,6 +1364,7 @@ async def skip_agenda_item(
         target_date=target_date,
     )
     return await _action_response(
+        user_id=user_id,
         agenda_item_id=agenda_item_id,
         outcome="skipped",
         request=request,
@@ -1335,6 +1379,7 @@ async def skip_agenda_item(
 
 
 async def snooze_agenda_item(
+    user_id: UUID,
     agenda_item_id: str,
     request: AgendaActionRequest | None = None,
     *,
@@ -1344,11 +1389,12 @@ async def snooze_agenda_item(
     request = request or AgendaActionRequest()
     snooze_until = _snooze_until(request, now=now)
     request = request.model_copy(update={"snooze_until": snooze_until})
-    item = await resolve_agenda_item(agenda_item_id, request.source_ref)
+    item = await resolve_agenda_item(user_id, agenda_item_id, request.source_ref)
     source_ref = request.source_ref or item.source_ref
     target_date = parse_agenda_item_date(agenda_item_id)
-    course_code = await _source_course_code(source_ref, item.course_code)
+    course_code = await _source_course_code(user_id, source_ref, item.course_code)
     event_id = await _record_action_event(
+        user_id=user_id,
         agenda_item_id=agenda_item_id,
         outcome="snoozed",
         source_ref=source_ref,
@@ -1358,6 +1404,7 @@ async def snooze_agenda_item(
         target_date=target_date,
     )
     return await _action_response(
+        user_id=user_id,
         agenda_item_id=agenda_item_id,
         outcome="snoozed",
         request=request,
@@ -1372,16 +1419,18 @@ async def snooze_agenda_item(
 
 
 async def log_agenda_result(
+    user_id: UUID,
     agenda_item_id: str,
     request: AgendaResultRequest,
     *,
     include_agenda: bool = False,
 ) -> AgendaActionResponse:
-    item = await resolve_agenda_item(agenda_item_id, request.source_ref)
+    item = await resolve_agenda_item(user_id, agenda_item_id, request.source_ref)
     source_ref = request.source_ref or item.source_ref
     target_date = parse_agenda_item_date(agenda_item_id)
-    course_code = await _source_course_code(source_ref, item.course_code)
+    course_code = await _source_course_code(user_id, source_ref, item.course_code)
     mutations = await apply_agenda_result_to_source(
+        user_id=user_id,
         agenda_item_id=agenda_item_id,
         item_kind=item.kind,
         source_ref=source_ref,
@@ -1389,6 +1438,7 @@ async def log_agenda_result(
         outcome=request.outcome,
     )
     event_id = await _record_action_event(
+        user_id=user_id,
         agenda_item_id=agenda_item_id,
         outcome=request.outcome,
         source_ref=source_ref,
@@ -1398,6 +1448,7 @@ async def log_agenda_result(
         target_date=target_date,
     )
     return await _action_response(
+        user_id=user_id,
         agenda_item_id=agenda_item_id,
         outcome=request.outcome,
         request=request,

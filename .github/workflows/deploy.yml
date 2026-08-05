@@ -1,0 +1,44 @@
+name: Deploy
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Git ref to deploy (tag, branch, or SHA). Defaults to origin/main.'
+        required: false
+        default: 'origin/main'
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: SSH deploy to Hetzner
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.HETZNER_HOST }}
+          username: ${{ secrets.HETZNER_USER }}
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          port: 22
+          command_timeout: 15m
+          script: |
+            set -euo pipefail
+            cd /opt/openstudy
+            REF="${{ github.event.inputs.ref || github.ref_name }}"
+            # Normalize bare branch names to origin/<branch> so the reset
+            # picks up the freshly-fetched commits, not the stale local branch.
+            if [[ "$REF" != origin/* && "$REF" != v* ]]; then
+              REF="origin/$REF"
+            fi
+            echo "Deploying ref: $REF"
+            git fetch --all --tags
+            git reset --hard "$REF"
+            echo "Now at: $(git log -1 --oneline)"
+            ./deploy.sh

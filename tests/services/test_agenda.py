@@ -2,16 +2,19 @@
 from __future__ import annotations
 
 from datetime import date, datetime, time, timezone
+from uuid import UUID
 
 import pytest
+
+TEST_USER_ID = UUID("00000000-0000-0000-0000-000000000001")
 
 
 async def _seed_course(db_conn, code: str = "AGEN") -> None:
     async with db_conn.connection() as conn, conn.cursor() as cur:
         await cur.execute(
-            "INSERT INTO courses (code, full_name, folder_name) "
-            "VALUES (%s, %s, %s) ON CONFLICT DO NOTHING",
-            (code, f"Agenda course {code}", code),
+            "INSERT INTO courses (user_id, code, full_name, folder_name) "
+            "VALUES (%s, %s, %s, %s) ON CONFLICT DO NOTHING",
+            (TEST_USER_ID, code, f"Agenda course {code}", code),
         )
 
 
@@ -41,14 +44,15 @@ async def _insert_topic(
             """
             INSERT INTO study_topics
                 (
-                    course_code, name, status, covered_on, confidence, sort_order,
+                    user_id, course_code, name, status, covered_on, confidence, sort_order,
                     mastery_state, retry_count, last_attempted_at, last_completed_at,
                     last_reviewed_at, next_review_at, last_confidence, error_count,
                     failure_reason, struggle_tags, retry_priority
                 )
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """,
             (
+                TEST_USER_ID,
                 course_code,
                 name,
                 status,
@@ -90,13 +94,14 @@ async def _insert_task(
         await cur.execute(
             """
             INSERT INTO tasks (
-                course_code, title, due_at, priority, status, mastery_state,
+                user_id, course_code, title, due_at, priority, status, mastery_state,
                 retry_count, next_review_at, last_confidence, error_count,
                 retry_priority, tags
             )
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """,
             (
+                TEST_USER_ID,
                 course_code,
                 title,
                 due_at,
@@ -124,10 +129,10 @@ async def _insert_deliverable(
     async with db_conn.connection() as conn, conn.cursor() as cur:
         await cur.execute(
             """
-            INSERT INTO deliverables (course_code, name, due_at, status)
-            VALUES (%s, %s, %s, %s)
+            INSERT INTO deliverables (user_id, course_code, name, due_at, status)
+            VALUES (%s, %s, %s, %s, %s)
             """,
-            (course_code, name, due_at, status),
+            (TEST_USER_ID, course_code, name, due_at, status),
         )
 
 
@@ -143,10 +148,10 @@ async def _insert_slot(
         await cur.execute(
             """
             INSERT INTO schedule_slots
-                (course_code, kind, weekday, start_time, end_time)
-            VALUES (%s, 'lecture', %s, %s, %s)
+                (user_id, course_code, kind, weekday, start_time, end_time)
+            VALUES (%s, %s, 'lecture', %s, %s, %s)
             """,
-            (course_code, weekday, start_time, end_time),
+            (TEST_USER_ID, course_code, weekday, start_time, end_time),
         )
 
 
@@ -197,6 +202,7 @@ async def test_agenda_puts_overdue_work_before_new_concept(client, db_conn):
     await _insert_topic(db_conn, name="New graph traversal", sort_order=1)
 
     agenda = await agenda_svc.generate_daily_agenda(
+        TEST_USER_ID,
         target_date=date(2026, 5, 9),
         course_code="AGEN",
     )
@@ -223,6 +229,7 @@ async def test_agenda_prioritizes_struggling_topics(client, db_conn):
     await _insert_topic(db_conn, name="Fresh hashing concept", sort_order=2)
 
     agenda = await agenda_svc.generate_daily_agenda(
+        TEST_USER_ID,
         target_date=date(2026, 5, 9),
         course_code="AGEN",
     )
@@ -264,6 +271,7 @@ async def test_overdue_retry_items_outrank_struggling_and_new_lessons(client, db
     )
 
     agenda = await agenda_svc.generate_daily_agenda(
+        TEST_USER_ID,
         target_date=date(2026, 5, 9),
         course_code="AGEN",
     )
@@ -301,6 +309,7 @@ async def test_new_ie_lesson_is_selected_only_after_active_mastery_capacity(clie
     )
 
     agenda = await agenda_svc.generate_daily_agenda(
+        TEST_USER_ID,
         target_date=date(2026, 5, 9),
         course_code="IE",
     )
@@ -337,6 +346,7 @@ async def test_due_retention_check_is_scheduled_before_new_exposure(client, db_c
     )
 
     agenda = await agenda_svc.generate_daily_agenda(
+        TEST_USER_ID,
         target_date=date(2026, 5, 9),
         course_code="IE",
     )
@@ -362,6 +372,7 @@ async def test_fall_behind_warning_increases_review_priority(client, db_conn):
     await _insert_slot(db_conn, weekday=7)
 
     agenda = await agenda_svc.generate_daily_agenda(
+        TEST_USER_ID,
         target_date=date(2026, 5, 9),
         course_code="AGEN",
     )
@@ -378,12 +389,20 @@ async def test_flashcard_assets_create_flashcard_agenda_item(
     from app.services import agenda as agenda_svc
 
     await _seed_course(db_conn, "IE")
-    flashcards = tmp_path / "interview-engineering" / "resources" / "flashcards"
+    flashcards = (
+        tmp_path
+        / str(TEST_USER_ID)
+        / "interview-engineering"
+        / "resources"
+        / "flashcards"
+    )
     flashcards.mkdir(parents=True)
     (flashcards / "Coding.apkg").write_bytes(b"deck")
     monkeypatch.setenv("STUDY_ROOT", str(tmp_path))
 
-    agenda = await agenda_svc.generate_daily_agenda(target_date=date(2026, 5, 9))
+    agenda = await agenda_svc.generate_daily_agenda(
+        TEST_USER_ID, target_date=date(2026, 5, 9)
+    )
 
     item = next(item for item in agenda.items if item.kind == "flashcards")
     assert item.title == "Review Interview Engineering flashcards"
@@ -405,10 +424,12 @@ async def test_agenda_generation_is_deterministic(client, db_conn):
     )
 
     first = await agenda_svc.generate_daily_agenda(
+        TEST_USER_ID,
         target_date=date(2026, 5, 9),
         course_code="AGEN",
     )
     second = await agenda_svc.generate_daily_agenda(
+        TEST_USER_ID,
         target_date=date(2026, 5, 9),
         course_code="AGEN",
     )
@@ -420,7 +441,9 @@ async def test_agenda_generation_is_deterministic(client, db_conn):
 async def test_empty_state_returns_useful_agenda(client, db_conn):
     from app.services import agenda as agenda_svc
 
-    agenda = await agenda_svc.generate_daily_agenda(target_date=date(2026, 5, 9))
+    agenda = await agenda_svc.generate_daily_agenda(
+        TEST_USER_ID, target_date=date(2026, 5, 9)
+    )
 
     assert agenda.items
     assert agenda.items[0].kind == "planning"
@@ -435,6 +458,7 @@ async def test_real_agenda_items_do_not_include_planning_fallback(client, db_con
     await _insert_topic(db_conn, name="Only real topic", sort_order=1)
 
     agenda = await agenda_svc.generate_daily_agenda(
+        TEST_USER_ID,
         target_date=date(2026, 5, 9),
         course_code="AGEN",
     )
@@ -451,12 +475,14 @@ async def test_complete_new_concept_uses_confidence_gate_for_mastery_state(clien
     await _seed_course(db_conn)
     await _insert_topic(db_conn, name="Binary search", sort_order=1)
     generated = await agenda_svc.generate_daily_agenda(
+        TEST_USER_ID,
         target_date=date(2026, 5, 9),
         course_code="AGEN",
     )
     item = next(item for item in generated.items if item.kind == "new_concept")
 
     low_result = await agenda_svc.complete_agenda_item(
+        TEST_USER_ID,
         item.id,
         AgendaActionRequest(source_ref=item.source_ref, confidence=2, error_count=2),
     )
@@ -470,6 +496,7 @@ async def test_complete_new_concept_uses_confidence_gate_for_mastery_state(clien
     assert "study_topic:mastery_state" in low_result.mutations_applied
 
     high_result = await agenda_svc.complete_agenda_item(
+        TEST_USER_ID,
         item.id,
         AgendaActionRequest(source_ref=item.source_ref, confidence=5, error_count=0),
     )
@@ -500,12 +527,14 @@ async def test_completed_retention_check_can_mark_topic_mastered(client, db_conn
         sort_order=1,
     )
     generated = await agenda_svc.generate_daily_agenda(
+        TEST_USER_ID,
         target_date=date(2026, 5, 9),
         course_code="AGEN",
     )
     item = next(item for item in generated.items if item.kind == "retention_check")
 
     await agenda_svc.complete_agenda_item(
+        TEST_USER_ID,
         item.id,
         AgendaActionRequest(source_ref=item.source_ref, confidence=5, error_count=0),
     )
@@ -528,12 +557,14 @@ async def test_complete_task_agenda_item_marks_task_done(client, db_conn):
         priority="urgent",
     )
     generated = await agenda_svc.generate_daily_agenda(
+        TEST_USER_ID,
         target_date=date(2026, 5, 9),
         course_code="AGEN",
     )
     item = next(item for item in generated.items if item.kind == "urgent_work")
 
     result = await agenda_svc.complete_agenda_item(
+        TEST_USER_ID,
         item.id,
         AgendaActionRequest(source_ref=item.source_ref, duration_minutes=25),
     )
@@ -556,12 +587,14 @@ async def test_complete_deliverable_records_event_without_submitting(client, db_
         due_at=datetime(2026, 5, 8, 9, tzinfo=timezone.utc),
     )
     generated = await agenda_svc.generate_daily_agenda(
+        TEST_USER_ID,
         target_date=date(2026, 5, 9),
         course_code="AGEN",
     )
     item = next(item for item in generated.items if item.kind == "urgent_work")
 
     result = await agenda_svc.complete_agenda_item(
+        TEST_USER_ID,
         item.id,
         AgendaActionRequest(source_ref=item.source_ref, notes="reviewed locally"),
     )
@@ -581,15 +614,24 @@ async def test_complete_flashcards_records_event_without_file_mutation(
     from app.services import agenda as agenda_svc
 
     await _seed_course(db_conn, "IE")
-    flashcards = tmp_path / "interview-engineering" / "resources" / "flashcards"
+    flashcards = (
+        tmp_path
+        / str(TEST_USER_ID)
+        / "interview-engineering"
+        / "resources"
+        / "flashcards"
+    )
     flashcards.mkdir(parents=True)
     deck = flashcards / "Coding.apkg"
     deck.write_bytes(b"deck")
     monkeypatch.setenv("STUDY_ROOT", str(tmp_path))
-    generated = await agenda_svc.generate_daily_agenda(target_date=date(2026, 5, 9))
+    generated = await agenda_svc.generate_daily_agenda(
+        TEST_USER_ID, target_date=date(2026, 5, 9)
+    )
     item = next(item for item in generated.items if item.kind == "flashcards")
 
     result = await agenda_svc.complete_agenda_item(
+        TEST_USER_ID,
         item.id,
         AgendaActionRequest(source_ref=item.source_ref, duration_minutes=15),
     )
@@ -609,12 +651,14 @@ async def test_complete_timed_exercise_records_result_metadata(client, db_conn):
     await _seed_course(db_conn)
     await _insert_topic(db_conn, name="Arrays", sort_order=1)
     generated = await agenda_svc.generate_daily_agenda(
+        TEST_USER_ID,
         target_date=date(2026, 5, 9),
         course_code="AGEN",
     )
     item = next(item for item in generated.items if item.kind == "timed_exercise")
 
     result = await agenda_svc.complete_agenda_item(
+        TEST_USER_ID,
         item.id,
         AgendaActionRequest(
             source_ref=item.source_ref,
@@ -642,12 +686,14 @@ async def test_log_partial_result_records_event_without_mutation(client, db_conn
     await _seed_course(db_conn)
     await _insert_topic(db_conn, name="Heaps", sort_order=1)
     generated = await agenda_svc.generate_daily_agenda(
+        TEST_USER_ID,
         target_date=date(2026, 5, 9),
         course_code="AGEN",
     )
     item = next(item for item in generated.items if item.kind == "new_concept")
 
     result = await agenda_svc.log_agenda_result(
+        TEST_USER_ID,
         item.id,
         AgendaResultRequest(
             outcome="partial",
@@ -675,16 +721,19 @@ async def test_skip_records_event_and_suppresses_same_day_without_mutation(clien
     await _seed_course(db_conn)
     await _insert_topic(db_conn, name="Queues", sort_order=1)
     generated = await agenda_svc.generate_daily_agenda(
+        TEST_USER_ID,
         target_date=date(2026, 5, 9),
         course_code="AGEN",
     )
     item = next(item for item in generated.items if item.kind == "new_concept")
 
     result = await agenda_svc.skip_agenda_item(
+        TEST_USER_ID,
         item.id,
         AgendaActionRequest(source_ref=item.source_ref, reason="not today"),
     )
     regenerated = await agenda_svc.generate_daily_agenda(
+        TEST_USER_ID,
         target_date=date(2026, 5, 9),
         course_code="AGEN",
     )
@@ -703,12 +752,14 @@ async def test_snooze_records_event_and_suppresses_until_expiry(client, db_conn)
     await _seed_course(db_conn)
     await _insert_topic(db_conn, name="Stacks", sort_order=1)
     generated = await agenda_svc.generate_daily_agenda(
+        TEST_USER_ID,
         target_date=date(2026, 5, 9),
         course_code="AGEN",
     )
     item = next(item for item in generated.items if item.kind == "new_concept")
 
     result = await agenda_svc.snooze_agenda_item(
+        TEST_USER_ID,
         item.id,
         AgendaActionRequest(
             source_ref=item.source_ref,
@@ -718,11 +769,13 @@ async def test_snooze_records_event_and_suppresses_until_expiry(client, db_conn)
         now=datetime(2026, 5, 9, 12, tzinfo=timezone.utc),
     )
     suppressed = await agenda_svc.generate_daily_agenda(
+        TEST_USER_ID,
         target_date=date(2026, 5, 9),
         course_code="AGEN",
         now=datetime(2026, 5, 9, 12, tzinfo=timezone.utc),
     )
     after_expiry = await agenda_svc.generate_daily_agenda(
+        TEST_USER_ID,
         target_date=date(2026, 5, 9),
         course_code="AGEN",
         now=datetime(2026, 5, 9, 19, tzinfo=timezone.utc),
@@ -747,9 +800,11 @@ async def test_omitted_date_uses_configured_local_timezone(client, db_conn, monk
             base = real_datetime(2026, 5, 8, 22, 30, tzinfo=timezone.utc)
             return base.astimezone(tz) if tz else base.replace(tzinfo=None)
 
-    await settings_svc.update_settings(AppSettingsPatch(timezone="Africa/Nairobi"))
+    await settings_svc.update_settings(
+        TEST_USER_ID, AppSettingsPatch(timezone="Africa/Nairobi")
+    )
     monkeypatch.setattr(agenda_svc, "datetime", FixedDateTime)
 
-    generated = await agenda_svc.generate_daily_agenda()
+    generated = await agenda_svc.generate_daily_agenda(TEST_USER_ID)
 
     assert generated.date == date(2026, 5, 9)

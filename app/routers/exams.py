@@ -1,20 +1,20 @@
 from typing import List
 from fastapi import APIRouter, Depends
 
-from ..auth import require_auth
+from ..auth import require_user, User
 from ..schemas import Exam, ExamPatch
-from ..services import exams as svc
+from ..intents import exams as intent
 
 router = APIRouter(prefix="/exams", tags=["exams"])
 
 
 @router.get("", response_model=List[Exam])
-async def list_(_: bool = Depends(require_auth)) -> List[Exam]:
-    return await svc.list_exams()
+async def list_(user: User = Depends(require_user)) -> List[Exam]:
+    return await intent.list_exams(user.id)
 
 
 @router.patch("/{course_code}", response_model=Exam)
 async def patch(
-    course_code: str, body: ExamPatch, _: bool = Depends(require_auth)
+    course_code: str, body: ExamPatch, user: User = Depends(require_user)
 ) -> Exam:
-    return await svc.update_exam(course_code, body)
+    return await intent.update_exam(user.id, course_code, body)

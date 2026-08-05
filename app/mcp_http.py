@@ -11,12 +11,17 @@ gets its task group started via the normal path. `_per_request_mcp_app`
 below sidesteps this by rebuilding the FastMCP server + entering its
 lifespan context fresh on every inbound request. Heavy compared to a
 long-lived session manager, but bulletproof.
-"""
 
+Phase 5 Task 1: per-request user binding. `OAuthTokenVerifier.verify_token`
+reads the row's user_id and stashes it in a contextvar that mcp_tools
+reads at tool-invocation time, so each Bearer token scopes every tool
+call to that token's owner.
+"""
 from __future__ import annotations
 
 import logging
 from typing import Any, Optional, cast
+from uuid import UUID
 
 from mcp.server.auth.provider import AccessToken, TokenVerifier
 from mcp.server.auth.settings import AuthSettings
@@ -24,13 +29,13 @@ from mcp.server.fastmcp import FastMCP
 from mcp.server.transport_security import TransportSecuritySettings
 
 from .config import get_settings
-from .mcp_tools import register_tools
+from .mcp_tools import register_tools, set_mcp_user_id
 from .services import oauth as oauth_svc
 
 log = logging.getLogger(__name__)
 
 
-class PostgrestTokenVerifier(TokenVerifier):
+class OAuthTokenVerifier(TokenVerifier):
     def __init__(self, resource: str):
         self._resource = resource
 
@@ -39,11 +44,24 @@ class PostgrestTokenVerifier(TokenVerifier):
         if not row:
             return None
         scope = str(row.get("scope") or "mcp")
+        # Phase 5 Task 1: bind the bearer's user_id into the per-request
+        # contextvar so mcp_tools call sites read this token's owner
+        # instead of the global operator sentinel. Both sides run in the
+        # same async task per request (FastMCP dispatches synchronously
+        # within a request scope under the per-request app rebuild in
+        # `_per_request_mcp_app`), so the value set here is visible inside
+        # every tool body invoked on this request.
+        user_id = row.get("user_id")
+        if user_id is not None:
+            if not isinstance(user_id, UUID):
+                user_id = UUID(str(user_id))
+            set_mcp_user_id(user_id)
+        expires_at_dt = row.get("expires_at")
         return AccessToken(
             token=token,
             client_id=row["client_id"],
             scopes=scope.split(),
-            expires_at=None,
+            expires_at=int(expires_at_dt.timestamp()) if expires_at_dt is not None else None,
             resource=self._resource,
         )
 
@@ -118,7 +136,7 @@ def _build_server() -> FastMCP:
     server = FastMCP(
         "openstudy",
         instructions=_SERVER_INSTRUCTIONS,
-        token_verifier=PostgrestTokenVerifier(resource_url),
+        token_verifier=OAuthTokenVerifier(resource_url),
         auth=AuthSettings(
             issuer_url=cast(Any, origin),
             resource_server_url=cast(Any, resource_url),

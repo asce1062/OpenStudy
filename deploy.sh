@@ -3,9 +3,13 @@
 #
 # Usage:
 #   ./deploy.sh             # full deploy: build → migrate → roll → health-gate → rollback-on-fail
+#   ./deploy.sh --pull       # fetch + reset to origin/main (or $OPENSTUDY_DEPLOY_REF) before deploying
 #   ./deploy.sh --skip-build # skip image rebuild (useful for env-only changes)
 #   ./deploy.sh --no-rollback # halt on health failure but don't auto-rollback (debugging)
 #   ./deploy.sh --status     # print current image tags + container health and exit
+#
+# Environment variables (for --pull):
+#   OPENSTUDY_DEPLOY_REF  git ref to reset to (default: origin/main); e.g. a version tag like v0.7.2
 #
 # Behaviour:
 #   1. Pre-flight: validate compose, check disk space, check .env files exist.
@@ -36,12 +40,14 @@ HEALTH_INTERVAL=2   # seconds
 SKIP_BUILD=0
 NO_ROLLBACK=0
 SHOW_STATUS=0
+PULL=0
 for arg in "$@"; do
     case "$arg" in
+        --pull)        PULL=1 ;;
         --skip-build)  SKIP_BUILD=1 ;;
         --no-rollback) NO_ROLLBACK=1 ;;
         --status)      SHOW_STATUS=1 ;;
-        -h|--help)     sed -n '2,20p' "$0"; exit 0 ;;
+        -h|--help)     sed -n '2,26p' "$0"; exit 0 ;;
         *) echo "unknown flag: $arg" >&2; exit 2 ;;
     esac
 done
@@ -91,6 +97,18 @@ if [ "$SHOW_STATUS" -eq 1 ]; then
     echo "=== last 20 lines of $LOG ==="
     tail -n 20 "$LOG" 2>/dev/null || echo "(no log yet)"
     exit 0
+fi
+
+# ── pull from origin (--pull) ────────────────────────────────────────────────
+if [ "$PULL" -eq 1 ]; then
+    REF="${OPENSTUDY_DEPLOY_REF:-origin/main}"
+    log "pulling latest from git (ref: $REF)..."
+    git fetch --all --tags 2>&1 | tee -a "$LOG"
+    if ! git reset --hard "$REF" 2>&1 | tee -a "$LOG"; then
+        err "git reset to $REF failed — aborting before any container changes"
+        exit 1
+    fi
+    log "git tree now at: $(git log -1 --oneline)"
 fi
 
 # ── pre-flight ───────────────────────────────────────────────────────────────
@@ -153,6 +171,28 @@ log "running migrations..."
 if ! $COMPOSE run --rm --no-deps openstudy uv run --no-sync python scripts/run_migrations.py 2>&1 | tee -a "$LOG"; then
     err "migration failed — aborting before swapping containers (postgres untouched if migration ran in transaction)"
     exit 1
+fi
+
+# Phase 1: one-shot FS migration (idempotent — guarded by marker file).
+if [[ -x ./scripts/migrate_study_root.sh ]]; then
+    log "running phase 1 FS migration (idempotent)..."
+    OPERATOR_USER_ID="${OPERATOR_USER_ID:-00000000-0000-0000-0000-000000000001}" \
+    STUDY_ROOT="${STUDY_ROOT:-/opt/courses}" \
+        ./scripts/migrate_study_root.sh || {
+        err "FS migration failed — investigate before continuing"
+        exit 1
+    }
+fi
+
+# Phase 3+: reconcile operator user from .env (email, display_name, password_hash).
+# Run inside a fresh container so the .env env_file is loaded — the host shell
+# doesn't have these vars. The script's own env-checks decide whether to skip.
+if [[ -x ./scripts/seed_operator_password.py ]]; then
+    log "reconciling operator user from .env (idempotent)..."
+    $COMPOSE run --rm --no-deps openstudy uv run --no-sync python scripts/seed_operator_password.py 2>&1 | tee -a "$LOG" || {
+        err "operator seed failed — investigate"
+        exit 1
+    }
 fi
 
 # ── roll forward ─────────────────────────────────────────────────────────────

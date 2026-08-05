@@ -1,6 +1,6 @@
 # Install OpenStudy
 
-End-to-end self-hosting guide. The whole stack — Postgres, PostgREST, the
+End-to-end self-hosting guide. The whole stack — Postgres, the
 FastAPI backend, the static frontend, and a reverse proxy with TLS — runs
 on a single Docker host. Anything that runs Docker works: a small VPS, a
 home server, a spare laptop.
@@ -55,27 +55,48 @@ guide. Anywhere else works; just adjust the paths below.
 
 OpenStudy reads two env files, both kept out of git:
 
-- **`.env`** — application secrets used by the FastAPI container
-  (login password hash, session secret, optional integrations).
-- **`.env.docker`** — Postgres credentials only, used to spin up the
-  database and PostgREST containers.
+- **`.env`** — application secrets and operator identity, read by the
+  FastAPI container at startup and at deploy time by
+  `scripts/seed_operator_password.py`.
+- **`.env.docker`** — Postgres credentials only, used by Docker Compose
+  to provision and reach the database container.
 
-Create them:
+### `.env` — required vars
+
+Copy the template, then fill in at minimum these five variables:
 
 ```bash
-# .env — copy the template, then fill in the placeholders
 cp .env.example .env
+```
 
-# Argon2id-hash a login password you'll use to sign in
-docker run --rm python:3.12-slim sh -c \
-  'pip install -q argon2-cffi && python -c "from argon2 import PasswordHasher; print(PasswordHasher().hash(input(\"password: \")))"'
-# → paste the resulting hash as APP_PASSWORD_HASH in .env
+| Variable | How to generate / what to put |
+|---|---|
+| `OPERATOR_EMAIL` | Your login email address. This is the username you'll use at `/login`. |
+| `APP_PASSWORD_HASH` | Run `uv run python -m app.tools.hashpw` and paste the output (`$argon2id$...`). |
+| `SESSION_SECRET` | `python3 -c 'import secrets; print(secrets.token_urlsafe(48))'` |
+| `SECRETS_ENCRYPTION_KEY` | `python3 -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())'` |
+| `PUBLIC_BASE_URL` | The public origin of your deploy, e.g. `https://your-domain.tld`. Preferred for OAuth/MCP discovery and `WWW-Authenticate` metadata. |
+| `PUBLIC_URL` | Legacy public origin used for email links when `PUBLIC_BASE_URL` is unset. |
 
-# Generate a session-cookie signing secret
-python3 -c 'import secrets; print(secrets.token_urlsafe(48))'
-# → paste as SESSION_SECRET in .env
+`OPERATOR_DISPLAY_NAME` defaults to `"Operator"` — set it to your name if you like.
 
-# Generate a strong Postgres password and write the docker-only env file
+`SIGNUPS_ENABLED` defaults to `false` (operator-only). Set to `true` to open public registration.
+
+`EMAIL_BACKEND` defaults to `console` (emails print to stdout). For real email:
+
+```
+EMAIL_BACKEND=gmail_smtp
+GMAIL_SMTP_USER=you@gmail.com
+GMAIL_SMTP_APP_PASSWORD=<16-char app password from myaccount.google.com/apppasswords>
+EMAIL_FROM=you@gmail.com
+EMAIL_FROM_NAME=Your Name
+```
+
+Telegram credentials are per-user — each user configures their own bot token and chat ID via **Settings → Telegram** after logging in. No env vars needed.
+
+### `.env.docker` — Postgres credentials
+
+```bash
 cat > .env.docker <<EOF
 POSTGRES_USER=openstudy
 POSTGRES_PASSWORD=$(openssl rand -hex 24)
@@ -84,11 +105,17 @@ EOF
 chmod 600 .env .env.docker
 ```
 
-The other variables in `.env` are optional and document themselves —
-Telegram bot credentials, the internal API secret used by webhooks, the
-public URL the app advertises in OAuth flows. For public MCP/OAuth clients,
-set `PUBLIC_BASE_URL=https://your-domain.tld` so discovery metadata and
-`WWW-Authenticate` headers never advertise `localhost`.
+Optionally bake your domain into the frontend image at build time (affects canonical tags, OG metadata, sitemap, and manifest):
+
+```
+PUBLIC_SITE_URL=https://your-domain.tld
+PUBLIC_SITE_NAME=Your Site Name
+PUBLIC_SHOW_LANDING=false
+```
+
+For public MCP/OAuth clients, set `PUBLIC_BASE_URL` in the backend environment
+as well as `PUBLIC_SITE_URL` for the frontend build. External clients cannot
+complete discovery when the backend advertises localhost.
 
 ---
 
@@ -106,7 +133,7 @@ set `PUBLIC_BASE_URL=https://your-domain.tld` so discovery metadata and
 4. Starts the Postgres container, waits for `pg_isready`.
 5. Runs `scripts/run_migrations.py` against Postgres (idempotent — re-applies
    nothing that's already been recorded in the `_migrations` table).
-6. Starts the PostgREST container, then the openstudy container.
+6. Starts the openstudy container.
 7. Polls `GET http://127.0.0.1:8000/api/health` for up to 60 s.
 8. **Pass:** prunes dangling images, exits 0.
    **Fail:** re-tags `:previous` as `:latest`, recreates the container, waits
@@ -119,8 +146,32 @@ curl http://127.0.0.1:8000/api/health
 # → {"ok":true,"version":"...","db":"ok","storage":"ok ..."}
 ```
 
-You should also see three running containers (`openstudy`, `openstudy-postgres`,
-`openstudy-postgrest`) when you run `./deploy.sh --status`.
+You should also see the running containers (`openstudy`, `openstudy-postgres`,
+`openstudy-frontend`) when you run `./deploy.sh --status`.
+
+### First-time operator login
+
+`./deploy.sh` automatically invokes `scripts/seed_operator_password.py`
+after migrations. That script reads your `.env` and reconciles the operator
+row in the `users` table:
+
+- If `OPERATOR_EMAIL` is set, it ensures a user row with that email exists.
+- If `APP_PASSWORD_HASH` is set **and** the row has no password yet, it
+  writes the hash — so re-running `./deploy.sh` never clobbers a password
+  you changed through the UI.
+- `OPERATOR_DISPLAY_NAME` is applied if provided.
+
+After the first `./deploy.sh`:
+
+1. Open `https://your-domain.tld/login`.
+2. Sign in with the email you set as `OPERATOR_EMAIL` and the password you
+   hashed into `APP_PASSWORD_HASH`.
+3. Go to **Settings → Telegram** to configure notifications (per-user, no
+   env vars required).
+
+If you need to reset the operator password later, update `APP_PASSWORD_HASH`
+in `.env` and delete the existing `password_hash` in the database, then
+redeploy — the seed script will write the new hash.
 
 ### Restoring data into a fresh box
 
@@ -283,7 +334,7 @@ docker compose --env-file .env.docker up -d --force-recreate openstudy
 ### Updating the docker images
 
 ```bash
-docker compose --env-file .env.docker pull   # postgres + postgrest
+docker compose --env-file .env.docker pull   # postgres
 ./deploy.sh                                   # rebuilds openstudy
 ```
 
@@ -307,9 +358,18 @@ and is readable by the container. `docker exec openstudy ls /opt/courses`
 should show your course tree.
 
 **Login returns 401 with the right password.**
-Re-hash the password and update `APP_PASSWORD_HASH` in `.env`. Common
-gotcha: the hash starts with `$argon2id$…` — those `$` characters are
-literal, not env interpolation. The compose `env_file: format: raw`
+Re-hash the password with `uv run python -m app.tools.hashpw`, update
+`APP_PASSWORD_HASH` in `.env` (not `.env.docker`), then manually clear the
+existing hash in the database so the seed script writes the new one:
+
+```bash
+docker exec -it openstudy-postgres psql -U openstudy -d openstudy \
+  -c "UPDATE users SET password_hash = NULL WHERE email = 'your-email@example.com';"
+./deploy.sh
+```
+
+Common gotcha: the hash starts with `$argon2id$…` — those `$` characters
+are literal, not env interpolation. The compose `env_file: format: raw`
 directive prevents mangling, but if you've manually exported the variable
 in a shell, the `$` chars need to be single-quoted.
 
@@ -317,7 +377,3 @@ in a shell, the `$` chars need to be single-quoted.
 The OAuth token cached by the client expired or was revoked. Reconnect:
 in claude.ai disconnect and re-add the connector; in Claude Code run
 `/mcp` and re-authenticate openstudy.
-
-**MCP advertises `localhost` in `WWW-Authenticate`.**
-Set `PUBLIC_BASE_URL=https://your-domain.tld` in the backend environment and
-redeploy. External MCP clients cannot use localhost OAuth discovery URLs.

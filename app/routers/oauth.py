@@ -15,12 +15,20 @@ import html
 from typing import Any, Optional
 from urllib.parse import quote, urlencode
 
-from fastapi import APIRouter, Body, Cookie, Form, HTTPException, Query, Request
+from fastapi import APIRouter, Body, Cookie, Depends, Form, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
+from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 
-from ..auth import COOKIE_NAME, optional_auth
+from ..auth import COOKIE_NAME, optional_auth, require_user, User
 from ..config import get_settings
 from ..services import oauth as oauth_svc
+
+_CONSENT_COOKIE = "oauth_consent_state"
+_CONSENT_MAX_AGE = 600  # 10 minutes
+
+
+def _consent_signer() -> URLSafeTimedSerializer:
+    return URLSafeTimedSerializer(get_settings().session_secret, salt="oauth-consent")
 
 
 router = APIRouter(tags=["oauth"])
@@ -202,7 +210,7 @@ async def authorize(
 <body>
   <div class="card">
     <h1>Authorize access</h1>
-    <p><span class="name">{safe_name}</span> is asking to access your OpenStudy account on your behalf.</p>
+    <p><span class="name">{safe_name}</span> is asking to access your OpenStudy session on your behalf.</p>
     <p>Approving will allow it to:</p>
     <ul>
       <li>Read your courses, tasks, deliverables, lectures, and study topics</li>
@@ -221,27 +229,62 @@ async def authorize(
     </form>
   </div>
 </body></html>"""
-    return HTMLResponse(content=page)
+    # Bind this authorize request to the subsequent consent POST via a
+    # short-lived signed cookie. This prevents a CSRF attacker from swapping
+    # `state` (or any other parameter) via a crafted consent form submission.
+    consent_payload = {
+        "state": state or "",
+        "client_id": client_id,
+        "challenge": code_challenge,
+    }
+    consent_token = _consent_signer().dumps(consent_payload)
+    resp = HTMLResponse(content=page)
+    resp.set_cookie(
+        key=_CONSENT_COOKIE,
+        value=consent_token,
+        max_age=_CONSENT_MAX_AGE,
+        httponly=True,
+        secure=True,
+        samesite="strict",
+        path="/oauth/",
+    )
+    return resp
 
 
 @router.post("/oauth/consent", include_in_schema=False)
 async def consent(
+    request: Request,
     client_id: str = Form(...),
     redirect_uri: str = Form(...),
     code_challenge: str = Form(...),
     code_challenge_method: str = Form("S256"),
     scope: Optional[str] = Form(None),
     state: Optional[str] = Form(None),
-    study_session: Optional[str] = Cookie(default=None, alias=COOKIE_NAME),
+    oauth_consent_state: Optional[str] = Cookie(default=None, alias=_CONSENT_COOKIE),
+    user: User = Depends(require_user),
 ) -> Response:
-    if not await optional_auth(study_session):
-        raise HTTPException(401, "not authenticated")
+    # Verify the signed consent cookie to bind this POST to the originating
+    # /authorize request. Rejects forged / tampered / expired consent forms.
+    if not oauth_consent_state:
+        raise HTTPException(400, "consent state invalid")
+    try:
+        cookie_data = _consent_signer().loads(oauth_consent_state, max_age=_CONSENT_MAX_AGE)
+    except (BadSignature, SignatureExpired):
+        raise HTTPException(400, "consent state invalid")
+
+    if (
+        cookie_data.get("state") != (state or "")
+        or cookie_data.get("client_id") != client_id
+        or cookie_data.get("challenge") != code_challenge
+    ):
+        raise HTTPException(400, "consent state invalid")
 
     client = await oauth_svc.get_client(client_id)
     if not client or redirect_uri not in client["redirect_uris"]:
         raise HTTPException(400, "invalid client/redirect")
 
     code = await oauth_svc.create_auth_code(
+        user_id=user.id,
         client_id=client_id,
         redirect_uri=redirect_uri,
         code_challenge=code_challenge,
@@ -251,7 +294,9 @@ async def consent(
     params: dict[str, str] = {"code": code}
     if state:
         params["state"] = state
-    return RedirectResponse(f"{redirect_uri}?{urlencode(params)}", status_code=302)
+    resp = RedirectResponse(f"{redirect_uri}?{urlencode(params)}", status_code=302)
+    resp.delete_cookie(_CONSENT_COOKIE, path="/oauth/")
+    return resp
 
 
 # ─────────────────────── Token revocation (RFC 7009) ───────────────────────
@@ -284,7 +329,7 @@ async def token(
     row = await oauth_svc.consume_auth_code(code, client_id, redirect_uri, code_verifier)
     if not row:
         raise HTTPException(400, "invalid_grant")
-    access_token, expires_in = await oauth_svc.create_access_token(client_id, row.get("scope"))
+    access_token, expires_in = await oauth_svc.create_access_token(row["user_id"], client_id, row.get("scope"))
     return JSONResponse(
         {
             "access_token": access_token,
